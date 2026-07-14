@@ -1,17 +1,32 @@
-# LacoIQ EditorialOS Web
+# Millena IQ
 
-Static bilingual web adaptation of the LacoIQ EditorialOS pitch deck, focused
-on WhatsApp event intake, editable content drafts, approvals and admin
-visibility.
+Product prototype for automated content operations across social media, blog,
+newsletter and website publishing.
 
-Open `index.html` in a browser. No build step or local server is required.
+The prototype includes Croatian and English interfaces, with Croatian as the
+default language. It runs as a static app without a build step.
 
-Croatian is the default language. English is available through the HR/EN
-language switcher in the navigation.
+Planned product domain: `millena.ai`.
+
+## Product flows
+
+- project onboarding with optional strategy upload or guided strategy setup
+- audience, content themes, voice and publishing cadence
+- WhatsApp event intake and automated multi-format content preparation
+- social content studio with channel-specific drafts and scheduling
+- component-based blog editor with SEO and newsletter handoff
+- weekly or monthly newsletter preparation and recipient management
+- website subscriptions, manual contacts and CSV imports
+- social, website, newsletter and custom API connections
+- per-channel review and automatic publishing rules
+- website integration and optional Millena website package
 
 ## Files
 
-- `index.html` - page structure and WhatsApp-first product narrative
-- `styles.css` - Apple-inspired visual system and responsive layout
-- `script.js` - language switching, tabs, counters, reveal animation and active navigation
-- `assets/` - visual material extracted and optimized from the supplied deck
+- `index.html` - application screens and product workflows
+- `styles.css` - responsive product interface and visual system
+- `script.js` - navigation, onboarding, language switching and interactions
+- `assets/lucide.min.js` - local Lucide icon runtime
+- `assets/` - supporting visual assets
+
+Open `index.html` directly in a browser. No build step is required.
