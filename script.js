@@ -1,3 +1,7 @@
+if (sessionStorage.getItem("millena-auth") !== "1") {
+  window.location.replace("login.html");
+}
+
 const screenNames = {
   overview: { hr: "Pregled", en: "Overview" },
   setup: { hr: "Postavljanje projekta", en: "Project setup" },
@@ -61,7 +65,7 @@ function applyLanguage(language) {
 
   currentLanguage = language;
   document.documentElement.lang = language;
-  document.title = language === "hr" ? "Millena IQ" : "Millena IQ";
+  document.title = language === "hr" ? "Millena IQ | Aplikacija" : "Millena IQ | App";
 
   document.querySelectorAll("[data-hr][data-en]").forEach((element) => {
     const nextText = element.dataset[language];
@@ -290,6 +294,11 @@ contactModal?.addEventListener("click", (event) => {
 });
 
 document.querySelector(".request-website")?.addEventListener("click", () => showToast("website"));
+
+document.querySelector("[data-logout]")?.addEventListener("click", () => {
+  sessionStorage.removeItem("millena-auth");
+  window.location.href = "index.html";
+});
 
 document.querySelectorAll(".block-grid button").forEach((button) => {
   button.addEventListener("click", () => showToast("saved"));

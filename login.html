@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="hr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Prijava u Millena IQ aplikaciju." />
+    <meta name="theme-color" content="#ffffff" />
+    <title>Prijava | Millena IQ</title>
+    <link rel="stylesheet" href="site.css" />
+  </head>
+  <body class="login-page">
+    <main class="login-shell">
+      <section class="login-panel">
+        <header class="login-panel-head">
+          <a class="site-brand" href="index.html" aria-label="Millena IQ početna">
+            <span class="brand-symbol">M</span>
+            <strong>Millena <b>IQ</b></strong>
+          </a>
+          <div class="language-switcher" aria-label="Jezik" data-aria-hr="Jezik" data-aria-en="Language">
+            <button class="language-button active" type="button" data-lang="hr" aria-pressed="true">HR</button>
+            <button class="language-button" type="button" data-lang="en" aria-pressed="false">EN</button>
+          </div>
+        </header>
+
+        <div class="login-form-wrap">
+          <p class="eyebrow"><span></span><span data-hr="Dobro došli natrag" data-en="Welcome back">Dobro došli natrag</span></p>
+          <h1 data-hr="Prijavite se u Millena IQ." data-en="Sign in to Millena IQ.">Prijavite se u Millena IQ.</h1>
+          <p data-hr="Nastavite tamo gdje je vaš sadržaj stao." data-en="Continue where your content left off.">Nastavite tamo gdje je vaš sadržaj stao.</p>
+
+          <div class="social-login-grid">
+            <button class="social-login" type="button" data-enter-app><i data-lucide="chrome"></i><span>Google</span></button>
+            <button class="social-login" type="button" data-enter-app><i data-lucide="panels-top-left"></i><span>Microsoft</span></button>
+          </div>
+
+          <div class="form-divider"><span data-hr="ili emailom" data-en="or with email">ili emailom</span></div>
+
+          <form class="login-form" id="login-form">
+            <label class="login-field">
+              <span>Email</span>
+              <input type="email" name="email" value="ivan@millena.ai" autocomplete="email" required />
+            </label>
+            <label class="login-field">
+              <span><span data-hr="Lozinka" data-en="Password">Lozinka</span><a href="#" data-hr="Zaboravljena lozinka?" data-en="Forgot password?">Zaboravljena lozinka?</a></span>
+              <span class="password-field">
+                <input type="password" name="password" value="millena-demo" autocomplete="current-password" required />
+                <button type="button" class="password-toggle" aria-label="Prikaži lozinku" data-aria-hr="Prikaži lozinku" data-aria-en="Show password"><i data-lucide="eye"></i></button>
+              </span>
+            </label>
+            <button class="login-submit" type="submit"><span data-hr="Prijavi se" data-en="Sign in">Prijavi se</span><i data-lucide="arrow-right"></i></button>
+          </form>
+
+          <p class="login-help"><span data-hr="Prvi put ste ovdje?" data-en="New here?">Prvi put ste ovdje?</span> <a href="#" data-enter-app data-app-target="app.html#setup" data-hr="Postavite projekt" data-en="Set up a project">Postavite projekt</a></p>
+        </div>
+
+        <footer class="login-panel-foot">
+          <span>© 2026 Millena.ai</span>
+          <span><a href="#" data-hr="Privatnost" data-en="Privacy">Privatnost</a> · <a href="#" data-hr="Uvjeti" data-en="Terms">Uvjeti</a></span>
+        </footer>
+      </section>
+
+      <aside class="login-visual">
+        <img src="assets/abstract-wave.jpg" alt="" aria-hidden="true" />
+        <div class="login-visual-content">
+          <p class="eyebrow light"><span></span><span data-hr="Sve je spremno" data-en="Everything is ready">Sve je spremno</span></p>
+          <h2 data-hr="Vaša strategija radi i kad se tim bavi drugim stvarima." data-en="Your strategy keeps working while the team focuses elsewhere.">Vaša strategija radi i kad se tim bavi drugim stvarima.</h2>
+          <p data-hr="Millena prikuplja informacije, priprema sadržaj i vodi ga do pravog kanala prema pravilima projekta." data-en="Millena collects information, prepares content and takes it to the right channel according to project rules.">Millena prikuplja informacije, priprema sadržaj i vodi ga do pravog kanala prema pravilima projekta.</p>
+          <div class="login-workflow">
+            <article><span><i data-lucide="message-circle"></i></span><strong data-hr="Prikupi" data-en="Collect">Prikupi</strong><small data-hr="Eventi i ideje" data-en="Events and ideas">Eventi i ideje</small></article>
+            <article><span><i data-lucide="scan-text"></i></span><strong data-hr="Provjeri" data-en="Check">Provjeri</strong><small data-hr="Kontekst i činjenice" data-en="Context and facts">Kontekst i činjenice</small></article>
+            <article><span><i data-lucide="files"></i></span><strong data-hr="Pripremi" data-en="Prepare">Pripremi</strong><small data-hr="Svi formati" data-en="Every format">Svi formati</small></article>
+            <article><span><i data-lucide="send"></i></span><strong data-hr="Objavi" data-en="Publish">Objavi</strong><small data-hr="Prema pravilima" data-en="By your rules">Prema pravilima</small></article>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <script src="assets/lucide.min.js"></script>
+    <script src="site.js"></script>
+  </body>
+</html>

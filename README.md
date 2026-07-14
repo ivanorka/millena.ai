@@ -23,10 +23,15 @@ Planned product domain: `millena.ai`.
 
 ## Files
 
-- `index.html` - application screens and product workflows
+- `index.html` - public Millena IQ product website
+- `login.html` - bilingual sign-in and project entry screen
+- `app.html` - authenticated application screens and product workflows
+- `site.css` / `site.js` - public website and login presentation/behavior
 - `styles.css` - responsive product interface and visual system
 - `script.js` - navigation, onboarding, language switching and interactions
 - `assets/lucide.min.js` - local Lucide icon runtime
 - `assets/` - supporting visual assets
 
-Open `index.html` directly in a browser. No build step is required.
+Open `index.html` directly in a browser. The demo login establishes a local
+browser session and opens `app.html`; signing out returns to the public site.
+No build step is required.
