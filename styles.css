@@ -218,6 +218,23 @@ h1 {
   letter-spacing: 0;
 }
 
+.hero-title {
+  display: grid;
+  gap: 8px;
+}
+
+.hero-title span,
+.hero-title small {
+  display: block;
+}
+
+.hero-title small {
+  color: var(--muted);
+  font-size: 0.36em;
+  line-height: 1.05;
+  font-weight: 740;
+}
+
 h2 {
   margin-bottom: 18px;
   font-size: 3.45rem;
