@@ -135,7 +135,7 @@ input:focus-visible {
   position: fixed;
   inset: 0 0 auto;
   z-index: 100;
-  padding: 14px 22px;
+  padding: 14px;
 }
 
 .site-header.scrolled .nav-shell {
@@ -145,9 +145,9 @@ input:focus-visible {
 }
 
 .nav-shell {
-  width: min(1220px, 100%);
+  width: 100%;
   min-height: 58px;
-  margin: 0 auto;
+  margin: 0;
   padding: 0 8px 0 14px;
   display: grid;
   grid-template-columns: minmax(190px, 1fr) auto minmax(290px, 1fr);
