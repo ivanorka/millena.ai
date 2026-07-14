@@ -237,15 +237,31 @@ document.querySelectorAll("[data-strategy-mode]").forEach((button) => {
     document.querySelectorAll("[data-strategy-mode]").forEach((choice) => {
       const isSelected = choice === button;
       choice.classList.toggle("selected", isSelected);
+      choice.setAttribute("aria-pressed", String(isSelected));
       const icon = choice.querySelector(":scope > svg");
       if (icon) icon.setAttribute("data-lucide", isSelected ? "circle-check" : "circle");
     });
 
     const questions = document.querySelector(".strategy-questions");
-    if (questions) questions.hidden = button.dataset.strategyMode === "upload";
+    const upload = document.querySelector(".strategy-upload");
+    const isUpload = button.dataset.strategyMode === "upload";
+    if (questions) questions.hidden = isUpload;
+    if (upload) upload.hidden = !isUpload;
     showToast("saved");
     refreshIcons();
   });
+});
+
+document.querySelector("#strategy-file")?.addEventListener("change", (event) => {
+  const file = event.currentTarget.files?.[0];
+  const status = document.querySelector(".strategy-file-status");
+  const fileName = document.querySelector(".strategy-file-name");
+  if (!status || !fileName) return;
+
+  status.hidden = !file;
+  fileName.textContent = file?.name || "";
+  if (file) showToast("saved");
+  refreshIcons();
 });
 
 document.querySelectorAll(".select-chips button").forEach((button) => {

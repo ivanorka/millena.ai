@@ -1229,6 +1229,11 @@ svg {
 .integration-icon.whatsapp { color: #158b51; background: #e8f7ef; }
 .mini-channel.telegram,
 .integration-icon.telegram { color: #2477c5; background: #eaf3fc; }
+.mini-channel.youtube { color: #e42323; background: #fff0f0; }
+.mini-channel.x-network { color: #fff; background: #171719; font-size: 0.68rem; font-weight: 850; }
+.mini-channel.reddit { color: #fff; background: #e34b20; font-size: 0.68rem; font-weight: 850; }
+.mini-channel.pinterest { color: #bd081c; background: #fff0f2; }
+.mini-channel.threads { color: #fff; background: #29272d; }
 .mini-channel.mail,
 .integration-icon.mail { color: var(--purple); background: var(--purple-soft); }
 .mini-channel.web,
@@ -1567,11 +1572,89 @@ svg {
   font-size: 0.66rem;
 }
 
-.strategy-questions {
+.strategy-upload {
   margin-top: 20px;
   padding-top: 20px;
   display: grid;
-  gap: 18px;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.strategy-upload[hidden],
+.strategy-questions[hidden],
+.strategy-file-status[hidden] {
+  display: none;
+}
+
+#strategy-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.strategy-dropzone {
+  min-height: 132px;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  border: 1px dashed #bfaee9;
+  border-radius: 7px;
+  background: #faf9fd;
+  cursor: pointer;
+}
+
+.strategy-dropzone:focus-within,
+.strategy-dropzone:hover {
+  border-color: var(--coral);
+  background: var(--coral-soft);
+}
+
+.strategy-upload-icon {
+  width: 46px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  color: var(--coral-dark);
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(50, 36, 80, 0.08);
+}
+
+.strategy-upload-icon svg { width: 20px; }
+.strategy-dropzone > span:nth-child(2) { min-width: 0; display: grid; gap: 6px; }
+.strategy-dropzone strong { font-size: 0.8rem; }
+.strategy-dropzone small { max-width: 440px; color: var(--muted); font-size: 0.66rem; line-height: 1.5; }
+.strategy-dropzone .secondary-button { pointer-events: none; }
+.strategy-dropzone .secondary-button b { font-size: 0.66rem; }
+
+.strategy-file-status {
+  min-height: 58px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #b9dfca;
+  border-radius: 7px;
+  background: var(--green-soft);
+}
+
+.strategy-file-status > svg:first-child { width: 18px; color: var(--green); }
+.strategy-file-status > svg:last-child { width: 16px; color: var(--green); }
+.strategy-file-status > span { min-width: 0; display: grid; gap: 3px; }
+.strategy-file-status strong { overflow: hidden; font-size: 0.7rem; text-overflow: ellipsis; white-space: nowrap; }
+.strategy-file-status small { color: var(--muted); font-size: 0.61rem; }
+
+.strategy-questions {
+  margin-top: 20px;
+  padding-top: 20px;
   border-top: 1px solid var(--line);
 }
 
@@ -1695,6 +1778,19 @@ svg {
   display: grid;
   gap: 8px;
 }
+
+.automation-channel-group {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.automation-channel-group.secondary { margin-top: 22px; }
+.automation-channel-group > span { color: #45454a; font-size: 0.7rem; font-weight: 800; }
+.automation-channel-group > small { color: var(--subtle); font-size: 0.61rem; text-align: right; }
+.automation-options.network-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 .connect-row,
 .automation-option {
@@ -2726,6 +2822,12 @@ svg {
   .setup-panel { min-height: 0; padding: 22px 18px 18px; }
   .setup-card { min-height: 0; }
   .setup-actions > span small { display:none; }
+  .strategy-dropzone { grid-template-columns: 40px minmax(0, 1fr); padding: 16px; }
+  .strategy-upload-icon { width: 40px; height: 40px; }
+  .strategy-dropzone .secondary-button { grid-column: 1 / -1; width: 100%; }
+  .automation-options.network-options { grid-template-columns: 1fr; }
+  .automation-channel-group { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .automation-channel-group > small { text-align: left; }
   .workflow-map { grid-template-columns: 1fr; }
   .bot-workspace { grid-template-columns: 1fr; }
   .bot-channel-panel,
