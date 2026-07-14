@@ -156,20 +156,6 @@ a {
   background: var(--ink);
 }
 
-.nav-cta {
-  min-height: 42px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 18px;
-  border-radius: 999px;
-  color: #ffffff;
-  background: var(--ink);
-  font-size: 0.9rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
 .section-pad {
   padding: 112px 24px;
 }
@@ -1033,12 +1019,6 @@ p {
   .brand-mark small,
   .nav-links {
     display: none;
-  }
-
-  .nav-cta {
-    min-height: 38px;
-    padding: 0 14px;
-    font-size: 0.8rem;
   }
 
   .nav-actions {

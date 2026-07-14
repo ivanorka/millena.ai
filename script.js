@@ -12,7 +12,6 @@ const translations = {
       product: "Proizvod",
       governance: "Upravljanje",
       pilot: "Pilot",
-      cta: "Pogledaj prijedlog",
     },
     language: {
       aria: "Jezik",
@@ -211,7 +210,6 @@ const translations = {
       product: "Product",
       governance: "Governance",
       pilot: "Pilot",
-      cta: "View proposal",
     },
     language: {
       aria: "Language",
