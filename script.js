@@ -8,6 +8,7 @@ const screenNames = {
   content: { hr: "Sadržaj", en: "Content" },
   calendar: { hr: "Kalendar", en: "Calendar" },
   automations: { hr: "Automatizacije", en: "Automations" },
+  companion: { hr: "Millena bot", en: "Millena bot" },
   social: { hr: "Društvene mreže", en: "Social studio" },
   blog: { hr: "Blog", en: "Blog" },
   newsletter: { hr: "Newsletter", en: "Newsletter" },

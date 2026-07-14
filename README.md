@@ -12,11 +12,13 @@ Planned product domain: `millena.ai`.
 
 - project onboarding with optional strategy upload or guided strategy setup
 - audience, content themes, voice and publishing cadence
-- WhatsApp event intake and automated multi-format content preparation
+- synchronized Telegram and WhatsApp bot intake, editing and approvals
+- direct app workflow with shared admin visibility and conversation history
 - social content studio with channel-specific drafts and scheduling
 - component-based blog editor with SEO and newsletter handoff
 - weekly or monthly newsletter preparation and recipient management
 - website subscriptions, manual contacts and CSV imports
+- LinkedIn, Instagram, Facebook, YouTube, X, Reddit, Pinterest and Threads
 - social, website, newsletter and custom API connections
 - per-channel review and automatic publishing rules
 - website integration and optional Millena website package
@@ -30,6 +32,7 @@ Planned product domain: `millena.ai`.
 - `styles.css` - responsive product interface and visual system
 - `script.js` - navigation, onboarding, language switching and interactions
 - `assets/lucide.min.js` - local Lucide icon runtime
+- `assets/millena-mark.svg` - Millena companion brand mark
 - `assets/` - supporting visual assets
 
 Open `index.html` directly in a browser. The demo login establishes a local
