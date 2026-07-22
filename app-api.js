@@ -6021,6 +6021,14 @@
     if (!stage) return;
     openPipelineStage(stage.dataset.pipelineStatus || "", stage.dataset.pipelineKind || "all");
   });
+  document.querySelectorAll("[data-dashboard-stat]").forEach((card) => card.addEventListener("click", () => {
+    const action = card.dataset.dashboardStat;
+    if (action === "audience") {
+      navigateTo("audience");
+      return;
+    }
+    openPipelineStage({ published: "published", scheduled: "scheduled", review: "in_review" }[action] || "");
+  }));
   document.querySelectorAll("[data-content-close]").forEach((button) => button.addEventListener("click", closeContentModal));
   document.querySelector("#content-modal")?.addEventListener("click", (event) => {
     if (event.target === event.currentTarget) closeContentModal();

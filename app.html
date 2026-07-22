@@ -161,22 +161,22 @@
             </button>
 
             <div class="stats-grid">
-              <article class="stat-card">
+              <button class="stat-card dashboard-stat-card" type="button" data-dashboard-stat="published" aria-label="Prikaži objavljeni sadržaj">
                 <span class="stat-icon coral"><i data-lucide="send"></i></span>
                 <div><small data-hr="Objavljeno ovaj mjesec" data-en="Published this month">Objavljeno ovaj mjesec</small><strong id="dashboard-published">0</strong><em id="dashboard-published-detail" data-hr="iz baze objava" data-en="from publication records">iz baze objava</em></div>
-              </article>
-              <article class="stat-card">
+              </button>
+              <button class="stat-card dashboard-stat-card" type="button" data-dashboard-stat="scheduled" aria-label="Prikaži zakazani sadržaj">
                 <span class="stat-icon blue"><i data-lucide="clock-3"></i></span>
                 <div><small data-hr="Zakazano" data-en="Scheduled">Zakazano</small><strong id="dashboard-scheduled">0</strong><em data-hr="sljedećih 14 dana" data-en="next 14 days">sljedećih 14 dana</em></div>
-              </article>
-              <article class="stat-card">
+              </button>
+              <button class="stat-card dashboard-stat-card" type="button" data-dashboard-stat="review" aria-label="Prikaži sadržaj koji čeka pregled">
                 <span class="stat-icon amber"><i data-lucide="circle-alert"></i></span>
                 <div><small data-hr="Čeka pregled" data-en="Waiting review">Čeka pregled</small><strong id="dashboard-review">0</strong><em data-hr="za uredničku provjeru" data-en="for editorial review">za uredničku provjeru</em></div>
-              </article>
-              <article class="stat-card">
+              </button>
+              <button class="stat-card dashboard-stat-card" type="button" data-dashboard-stat="audience" aria-label="Otvori newsletter publiku">
                 <span class="stat-icon green"><i data-lucide="users"></i></span>
                 <div><small data-hr="Newsletter publika" data-en="Newsletter audience">Newsletter publika</small><strong id="dashboard-audience">0</strong><em id="dashboard-audience-detail" data-hr="aktivnih kontakata" data-en="active contacts">aktivnih kontakata</em></div>
-              </article>
+              </button>
             </div>
 
             <div class="dashboard-grid">
@@ -642,6 +642,6 @@
 
     <script src="assets/lucide.min.js"></script>
     <script src="script.js?v=20260722j"></script>
-    <script src="app-api.js?v=20260722o"></script>
+    <script src="app-api.js?v=20260722p"></script>
   </body>
 </html>

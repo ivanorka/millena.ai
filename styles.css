@@ -857,6 +857,12 @@ svg {
   background: #fff;
   box-shadow: var(--shadow);
 }
+.dashboard-stat-card { position: relative; width: 100%; color: var(--ink); text-align: left; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+.dashboard-stat-card:hover,
+.dashboard-stat-card:focus-visible { border-color: var(--line-strong); outline: 0; box-shadow: var(--shadow), inset 3px 0 var(--coral); transform: translateY(-1px); }
+.dashboard-stat-card::after { content: "›"; position: absolute; right: 11px; bottom: 8px; color: var(--subtle); font-size: 1rem; opacity: 0; transform: translateX(-3px); transition: opacity .15s ease, transform .15s ease; }
+.dashboard-stat-card:hover::after,
+.dashboard-stat-card:focus-visible::after { opacity: 1; transform: translateX(0); }
 
 .stat-icon {
   width: 40px;
