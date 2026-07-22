@@ -69,6 +69,7 @@ func (h *Handler) Create(c *gin.Context) {
 
 	input.Name = strings.TrimSpace(input.Name)
 	input.Slug = strings.ToLower(strings.TrimSpace(input.Slug))
+	input.AdminProjectID = strings.TrimSpace(input.AdminProjectID)
 	if input.DefaultLocale == "" {
 		input.DefaultLocale = "hr"
 	}
@@ -83,7 +84,11 @@ func (h *Handler) Create(c *gin.Context) {
 	if !h.databaseAvailable(c) {
 		return
 	}
-	allowed, err := h.repository.CanCreateProjects(c.Request.Context(), auth.UserID(c))
+	if input.AdminProjectID == "" {
+		writeError(c, http.StatusForbidden, "administrator_required", "Only an administrator of the active project can create projects.")
+		return
+	}
+	allowed, err := h.repository.CanCreateProjects(c.Request.Context(), auth.UserID(c), input.AdminProjectID)
 	if err != nil {
 		writeError(c, http.StatusInternalServerError, "internal_error", "Project permissions could not be checked.")
 		return
