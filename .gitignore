@@ -1,0 +1,9 @@
+.DS_Store
+.env
+.data/
+.idea/
+.vscode/
+bin/
+coverage.out
+millena-api
+/api

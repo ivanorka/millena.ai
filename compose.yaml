@@ -1,0 +1,58 @@
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: millena
+      POSTGRES_USER: millena
+      POSTGRES_PASSWORD: millena
+    ports:
+      - "5432:5432"
+    volumes:
+      - millena-postgres:/var/lib/postgresql
+      - ./migrations/000001_initial_schema.up.sql:/docker-entrypoint-initdb.d/000001_initial_schema.sql:ro
+      - ./migrations/000002_project_app_state.up.sql:/docker-entrypoint-initdb.d/000002_project_app_state.sql:ro
+      - ./migrations/000003_social_sandbox.up.sql:/docker-entrypoint-initdb.d/000003_social_sandbox.sql:ro
+      - ./migrations/000004_auth_permissions_calendar.up.sql:/docker-entrypoint-initdb.d/000004_auth_permissions_calendar.sql:ro
+      - ./migrations/000005_content_strategy_ai.up.sql:/docker-entrypoint-initdb.d/000005_content_strategy_ai.sql:ro
+      - ./migrations/000006_operational_workspace.up.sql:/docker-entrypoint-initdb.d/000006_operational_workspace.sql:ro
+      - ./migrations/000007_project_assets.up.sql:/docker-entrypoint-initdb.d/000007_project_assets.sql:ro
+      - ./migrations/000008_project_personas.up.sql:/docker-entrypoint-initdb.d/000008_project_personas.sql:ro
+      - ./migrations/000009_content_item_assets.up.sql:/docker-entrypoint-initdb.d/000009_content_item_assets.sql:ro
+      - ./migrations/000010_social_publication_cascade.up.sql:/docker-entrypoint-initdb.d/000010_social_publication_cascade.sql:ro
+      - ./migrations/000011_newsletter_schedule_consistency.up.sql:/docker-entrypoint-initdb.d/000011_newsletter_schedule_consistency.sql:ro
+      - ./migrations/000012_publication_consumptions.up.sql:/docker-entrypoint-initdb.d/000012_publication_consumptions.sql:ro
+      - ./migrations/000013_remove_unimplemented_sso_feature.up.sql:/docker-entrypoint-initdb.d/000013_remove_unimplemented_sso_feature.sql:ro
+      - ./migrations/000014_timezone_aware_seed_anchors.up.sql:/docker-entrypoint-initdb.d/000014_timezone_aware_seed_anchors.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U millena -d millena"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+    environment:
+      APP_ENV: development
+      PORT: 8080
+      DATABASE_URL: postgres://millena:millena@db:5432/millena?sslmode=disable
+      STATIC_DIR: /app/public
+      DATABASE_MAX_CONNECTIONS: 10
+      SHUTDOWN_TIMEOUT: 10s
+      AI_PROVIDER: ${AI_PROVIDER:-local}
+      AI_REQUEST_TIMEOUT: ${AI_REQUEST_TIMEOUT:-90s}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-}
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/api/v1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  millena-postgres:

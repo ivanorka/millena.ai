@@ -28,34 +28,37 @@
           <h1 data-hr="Prijavite se u Millena AI." data-en="Sign in to Millena AI.">Prijavite se u Millena AI.</h1>
           <p data-hr="Nastavite tamo gdje je vaš sadržaj stao." data-en="Continue where your content left off.">Nastavite tamo gdje je vaš sadržaj stao.</p>
 
-          <div class="social-login-grid">
-            <button class="social-login" type="button" data-enter-app><i data-lucide="chrome"></i><span>Google</span></button>
-            <button class="social-login" type="button" data-enter-app><i data-lucide="panels-top-left"></i><span>Microsoft</span></button>
+          <div class="auth-mode-switch" role="tablist" aria-label="Način prijave">
+            <button class="active" type="button" data-auth-mode="login" data-hr="Prijava" data-en="Sign in">Prijava</button>
+            <button type="button" data-auth-mode="register" data-hr="Registracija" data-en="Register">Registracija</button>
           </div>
 
-          <div class="form-divider"><span data-hr="ili emailom" data-en="or with email">ili emailom</span></div>
-
           <form class="login-form" id="login-form">
+            <div class="register-fields" id="register-fields" hidden>
+              <label class="login-field"><span data-hr="Ime i prezime" data-en="Full name">Ime i prezime</span><input type="text" name="displayName" autocomplete="name" /></label>
+              <label class="login-field"><span data-hr="Organizacija" data-en="Organization">Organizacija</span><input type="text" name="organizationName" autocomplete="organization" /></label>
+            </div>
             <label class="login-field">
               <span>Email</span>
               <input type="email" name="email" value="irena@mpr.hr" autocomplete="email" required />
             </label>
             <label class="login-field">
-              <span><span data-hr="Lozinka" data-en="Password">Lozinka</span><a href="#" data-hr="Zaboravljena lozinka?" data-en="Forgot password?">Zaboravljena lozinka?</a></span>
+              <span data-hr="Lozinka" data-en="Password">Lozinka</span>
               <span class="password-field">
                 <input type="password" name="password" value="millena-demo" autocomplete="current-password" required />
                 <button type="button" class="password-toggle" aria-label="Prikaži lozinku" data-aria-hr="Prikaži lozinku" data-aria-en="Show password"><i data-lucide="eye"></i></button>
               </span>
             </label>
             <button class="login-submit" type="submit"><span data-hr="Prijavi se" data-en="Sign in">Prijavi se</span><i data-lucide="arrow-right"></i></button>
+            <p class="auth-message" id="auth-message" role="alert" hidden></p>
           </form>
 
-          <p class="login-help"><span data-hr="Prvi put ste ovdje?" data-en="New here?">Prvi put ste ovdje?</span> <a href="#" data-enter-app data-app-target="app.html#setup" data-hr="Postavite projekt" data-en="Set up a project">Postavite projekt</a></p>
+          <p class="login-help"><span data-hr="Prvi put ste ovdje?" data-en="New here?">Prvi put ste ovdje?</span> <a href="#" data-register-toggle data-hr="Registrirajte organizaciju" data-en="Register your organization">Registrirajte organizaciju</a></p>
         </div>
 
         <footer class="login-panel-foot">
           <span>© 2026 Millena.ai</span>
-          <span><a href="#" data-hr="Privatnost" data-en="Privacy">Privatnost</a> · <a href="#" data-hr="Uvjeti" data-en="Terms">Uvjeti</a></span>
+          <span>Local development workspace</span>
         </footer>
       </section>
 
@@ -76,6 +79,6 @@
     </main>
 
     <script src="assets/lucide.min.js"></script>
-    <script src="site.js?v=20260714b"></script>
+    <script src="site.js?v=20260722e"></script>
   </body>
 </html>

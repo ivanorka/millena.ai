@@ -1,7 +1,3 @@
-if (sessionStorage.getItem("millena-auth") !== "1") {
-  window.location.replace("login.html");
-}
-
 const screenNames = {
   overview: { hr: "Pregled", en: "Overview" },
   setup: { hr: "Postavljanje projekta", en: "Project setup" },
@@ -25,8 +21,27 @@ const messages = {
     scheduled: "Sadržaj je dodan u raspored.",
     contact: "Kontakt je dodan na newsletter listu.",
     website: "Zahtjev za web prijedlog je spremljen.",
-    setup: "Projekt je postavljen i automatizacija je aktivna.",
+    setup: "Projekt je postavljen.",
     rewritten: "Tekst je prerađen prema tonu projekta.",
+    socialConnected: "Sandbox račun je povezan i spremljen u bazu.",
+    socialTested: "Sandbox veza je uspješno testirana.",
+    socialDisconnected: "Sandbox račun je odspojen.",
+    socialPublished: "Testna objava je obrađena i spremljena u bazu.",
+    socialRequired: "Prvo povežite sandbox račun za odabranu mrežu.",
+    socialError: "Social API nije dovršio zahtjev. Pokušajte ponovno.",
+    calendarSaved: "Kalendarska stavka je spremljena u bazu.",
+    calendarDeleted: "Kalendarska stavka je obrisana.",
+    calendarError: "Kalendar nije dovršio zahtjev. Pokušajte ponovno.",
+    actionRecorded: "Akcija je izvršena i zabilježena u audit logu.",
+    contentSaved: "Sadržaj je spremljen u bazu.",
+    contentDeleted: "Sadržaj je trajno obrisan iz baze.",
+    contentGenerated: "AI je generirao nacrt koristeći strategiju projekta.",
+    contentRefined: "AI je doradio vaš tekst bez promjene ključnih činjenica.",
+    contentError: "Content API nije dovršio zahtjev. Pokušajte ponovno.",
+    contentAIError: "AI nije dovršio obradu. Provjerite tekst i pokušajte ponovno.",
+    strategySaved: "Strateški kontekst je spremljen i aktivan za AI.",
+    strategyFileSaved: "Tekst strategije je izdvojen iz datoteke i spremljen.",
+    strategyError: "Strategiju nije bilo moguće spremiti ili obraditi.",
   },
   en: {
     saved: "Your change was saved successfully.",
@@ -34,8 +49,27 @@ const messages = {
     scheduled: "Content was added to the schedule.",
     contact: "The contact was added to the newsletter list.",
     website: "The website proposal request was saved.",
-    setup: "The project is set up and automation is active.",
+    setup: "Project setup is complete.",
     rewritten: "The copy was rewritten to match the project tone.",
+    socialConnected: "The sandbox account was connected and stored in the database.",
+    socialTested: "The sandbox connection was tested successfully.",
+    socialDisconnected: "The sandbox account was disconnected.",
+    socialPublished: "The test post was processed and stored in the database.",
+    socialRequired: "Connect a sandbox account for the selected network first.",
+    socialError: "The social API did not complete the request. Please try again.",
+    calendarSaved: "The calendar item was saved to the database.",
+    calendarDeleted: "The calendar item was deleted.",
+    calendarError: "The calendar did not complete the request. Please try again.",
+    actionRecorded: "The action was completed and recorded in the audit log.",
+    contentSaved: "Content was saved to the database.",
+    contentDeleted: "Content was permanently deleted from the database.",
+    contentGenerated: "AI generated a draft using the project strategy.",
+    contentRefined: "AI refined your copy without changing its key facts.",
+    contentError: "The content API did not complete the request. Please try again.",
+    contentAIError: "AI did not complete the operation. Check the copy and try again.",
+    strategySaved: "The strategy context is saved and active for AI.",
+    strategyFileSaved: "Strategy text was extracted from the file and saved.",
+    strategyError: "The strategy could not be saved or processed.",
   },
 };
 
@@ -106,7 +140,11 @@ function closeMobileMenu() {
 }
 
 function navigateTo(screen, options = {}) {
-  const destination = validScreens.has(screen) ? screen : "overview";
+  const requested = validScreens.has(screen) ? screen : "overview";
+  const denied = typeof window.__millenaAuthorizeScreen === "function" && !window.__millenaAuthorizeScreen(requested);
+  const destination = denied
+    ? "overview"
+    : requested;
   currentScreen = destination;
 
   appScreens.forEach((section) => {
@@ -120,7 +158,7 @@ function navigateTo(screen, options = {}) {
   updateScreenTitle();
   closeMobileMenu();
 
-  if (options.updateHash !== false) {
+  if (options.updateHash !== false || denied) {
     history.replaceState(null, "", `#${destination}`);
   }
 
@@ -225,11 +263,7 @@ document.querySelector("#setup-next")?.addEventListener("click", () => {
     currentSetupStep += 1;
     updateSetupControls();
     document.querySelector(".setup-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    return;
   }
-
-  showToast("setup");
-  window.setTimeout(() => navigateTo("overview"), 550);
 });
 
 document.querySelectorAll("[data-strategy-mode]").forEach((button) => {
@@ -247,7 +281,6 @@ document.querySelectorAll("[data-strategy-mode]").forEach((button) => {
     const isUpload = button.dataset.strategyMode === "upload";
     if (questions) questions.hidden = isUpload;
     if (upload) upload.hidden = !isUpload;
-    showToast("saved");
     refreshIcons();
   });
 });
@@ -260,7 +293,6 @@ document.querySelector("#strategy-file")?.addEventListener("change", (event) => 
 
   status.hidden = !file;
   fileName.textContent = file?.name || "";
-  if (file) showToast("saved");
   refreshIcons();
 });
 
@@ -276,49 +308,45 @@ document.querySelectorAll(".segmented button").forEach((button) => {
 
 document.querySelectorAll(".channel-tabs button").forEach((button) => {
   button.addEventListener("click", () => {
+    if (!button.dataset.socialChannel) return;
     button.parentElement.querySelectorAll("button").forEach((sibling) => sibling.classList.toggle("active", sibling === button));
   });
 });
 
-document.querySelectorAll(".connect-action").forEach((button) => {
-  button.addEventListener("click", () => {
-    const label = button.querySelector("span") || button;
-    label.textContent = currentLanguage === "hr" ? "Povezano" : "Connected";
-    button.classList.add("connected-action");
-    showToast("connected");
-  });
-});
-
-document.querySelectorAll(".publish-action").forEach((button) => {
-  button.addEventListener("click", () => showToast("scheduled"));
-});
-
-document.querySelector(".rewrite-button")?.addEventListener("click", () => {
-  const editor = document.querySelector(".post-editor");
-  if (editor) editor.animate([{ opacity: 0.45 }, { opacity: 1 }], { duration: 420, easing: "ease-out" });
-  showToast("rewritten");
-});
-
 document.querySelectorAll(".add-contact-action").forEach((button) => button.addEventListener("click", openContactModal));
 document.querySelectorAll(".modal-close").forEach((button) => button.addEventListener("click", closeContactModal));
-document.querySelector(".modal-save")?.addEventListener("click", () => {
-  closeContactModal();
-  showToast("contact");
-});
 
 contactModal?.addEventListener("click", (event) => {
   if (event.target === contactModal) closeContactModal();
 });
 
-document.querySelector(".request-website")?.addEventListener("click", () => showToast("website"));
-
-document.querySelector("[data-logout]")?.addEventListener("click", () => {
-  sessionStorage.removeItem("millena-auth");
-  window.location.href = "index.html";
+document.querySelectorAll(".platform-list").forEach((group) => {
+  group.querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (button.getAttribute("aria-disabled") === "true") return;
+      group.querySelectorAll("button").forEach((item) => item.classList.toggle("selected", item === button));
+    });
+  });
 });
 
-document.querySelectorAll(".block-grid button").forEach((button) => {
-  button.addEventListener("click", () => showToast("saved"));
+document.querySelectorAll(".inspector-tabs").forEach((group) => {
+  group.querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => {
+      group.querySelectorAll("button").forEach((item) => item.classList.toggle("active", item === button));
+    });
+  });
+});
+
+const logoutAPIBase = window.location.port === "8000"
+  ? `${window.location.protocol}//${window.location.hostname}:8080/api/v1`
+  : "/api/v1";
+
+document.querySelector("[data-logout]")?.addEventListener("click", async () => {
+  try {
+    await fetch(`${logoutAPIBase}/auth/logout`, { method: "POST", credentials: "include" });
+  } finally {
+    window.location.href = "login.html";
+  }
 });
 
 document.addEventListener("keydown", (event) => {

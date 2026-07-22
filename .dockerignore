@@ -1,0 +1,7 @@
+.git
+.gitignore
+.env
+.DS_Store
+bin
+coverage.out
+PRODUCT_STRATEGY.md
