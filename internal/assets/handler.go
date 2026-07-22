@@ -57,12 +57,12 @@ func (h *Handler) Upload(c *gin.Context) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, MaxAssetSize+assetRequestAllowance)
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		writeAssetError(c, http.StatusUnprocessableEntity, "file_required", "Choose a file up to 10 MB.")
+		writeAssetError(c, http.StatusUnprocessableEntity, "file_required", "Choose a file up to 4 MB.")
 		return
 	}
 	defer file.Close()
 	if header.Size < 1 || header.Size > MaxAssetSize {
-		writeAssetError(c, http.StatusRequestEntityTooLarge, "file_too_large", "Files are limited to 10 MB.")
+		writeAssetError(c, http.StatusRequestEntityTooLarge, "file_too_large", "Files are limited to 4 MB.")
 		return
 	}
 	data, err := io.ReadAll(io.LimitReader(file, MaxAssetSize+1))
@@ -71,7 +71,7 @@ func (h *Handler) Upload(c *gin.Context) {
 		return
 	}
 	if len(data) < 1 || int64(len(data)) > MaxAssetSize {
-		writeAssetError(c, http.StatusRequestEntityTooLarge, "file_too_large", "Files are limited to 10 MB.")
+		writeAssetError(c, http.StatusRequestEntityTooLarge, "file_too_large", "Files are limited to 4 MB.")
 		return
 	}
 	purpose := strings.ToLower(strings.TrimSpace(c.PostForm("purpose")))

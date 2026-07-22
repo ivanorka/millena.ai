@@ -2,7 +2,9 @@ package assets
 
 import "time"
 
-const MaxAssetSize int64 = 10 << 20
+// Netlify encodes binary function requests, leaving roughly 4.5 MB for the
+// original file inside its 6 MB request limit. Keep a safety margin.
+const MaxAssetSize int64 = 4 << 20
 
 const (
 	PurposeAssistantAttachment = "assistant_attachment"

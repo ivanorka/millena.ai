@@ -134,8 +134,8 @@
 
   async function uploadProjectAsset(file, purpose) {
     if (!file) throw new Error(currentLanguage === "hr" ? "Datoteka nije odabrana." : "No file selected.");
-    if (file.size < 1 || file.size > 10 * 1024 * 1024) {
-      throw new Error(currentLanguage === "hr" ? "Datoteka mora imati najviše 10 MB." : "The file must be no larger than 10 MB.");
+    if (file.size < 1 || file.size > 4 * 1024 * 1024) {
+      throw new Error(currentLanguage === "hr" ? "Datoteka mora imati najviše 4 MB. Za veće fotografije pripremamo izravni upload." : "The file must be no larger than 4 MB.");
     }
     const form = new FormData();
     form.append("file", file);
