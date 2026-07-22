@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -109,6 +110,9 @@ func initializeAPI(ctx context.Context) error {
 			OllamaModel: cfg.OllamaModel, AITimeout: cfg.AIRequestTimeout,
 		})
 	})
+	if apiErr != nil {
+		log.Printf("api initialization failed: %v", apiErr)
+	}
 	return apiErr
 }
 
