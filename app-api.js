@@ -5072,7 +5072,7 @@
     openDomainModal("project-modal");
     const newProjectForm = document.querySelector("#project-new-form");
     const newProjectToggle = document.querySelector("#project-new-toggle");
-    const canCreate = (window.__millenaProjectAccess || []).some((access) => access.role === "owner");
+    const canCreate = projectRoleAllows("owner");
     if (newProjectToggle) newProjectToggle.hidden = !canCreate;
     if (newProjectForm) newProjectForm.hidden = true;
     if (newProjectToggle) newProjectToggle.setAttribute("aria-expanded", "false");
@@ -5084,7 +5084,7 @@
   }
 
   async function createProject() {
-    if (!(window.__millenaProjectAccess || []).some((access) => access.role === "owner")) {
+    if (!projectRoleAllows("owner")) {
       showDomainError(currentLanguage === "hr" ? "Izrada projekta" : "Creating project", new Error(currentLanguage === "hr" ? "Samo administrator može dodati projekt." : "Only an administrator can add a project."));
       return;
     }
@@ -5096,6 +5096,7 @@
           name: document.querySelector("#project-new-name").value.trim(),
           slug: document.querySelector("#project-new-slug").value.trim(),
           defaultLocale: document.querySelector("#project-new-locale").value,
+          adminProjectId: projectID,
         }),
       });
       const session = await apiRequest("/auth/me");
@@ -5384,8 +5385,13 @@
       node.dataset.en = projectAccess.role === "owner" ? "Client administrator" : projectAccess.role;
       node.textContent = node.dataset[currentLanguage];
     });
-    const permissionsPanel = document.querySelector("#team-admin-actions");
-    if (permissionsPanel) permissionsPanel.hidden = !projectRoleAllows("owner");
+    const permissionsButton = document.querySelector("#permissions-manage");
+    const teamAddButton = document.querySelector("#team-add");
+    if (permissionsButton) {
+      const isOwner = projectRoleAllows("owner");
+      permissionsButton.hidden = !isOwner;
+      if (isOwner && teamAddButton?.parentElement) teamAddButton.before(permissionsButton);
+    }
     document.querySelectorAll(".usage-row strong").forEach((node) => {
       node.textContent = publicationLimit == null ? `${publishedThisMonth} / ∞` : `${publishedThisMonth} / ${publicationLimit}`;
       node.title = planName;

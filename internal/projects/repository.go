@@ -62,13 +62,13 @@ func (r *Repository) List(ctx context.Context, userID string) ([]Project, error)
 	return projects, rows.Err()
 }
 
-func (r *Repository) CanCreateProjects(ctx context.Context, userID string) (bool, error) {
+func (r *Repository) CanCreateProjects(ctx context.Context, userID, adminProjectID string) (bool, error) {
 	var allowed bool
 	err := r.pool.QueryRow(ctx, `
 		SELECT EXISTS(
 			SELECT 1 FROM project_members
-			WHERE user_id = $1::uuid AND status = 'active' AND role = 'owner'
-		)`, userID).Scan(&allowed)
+			WHERE user_id = $1::uuid AND project_id = $2::uuid AND status = 'active' AND role = 'owner'
+		)`, userID, adminProjectID).Scan(&allowed)
 	return allowed, err
 }
 

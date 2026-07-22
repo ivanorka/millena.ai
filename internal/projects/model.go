@@ -17,9 +17,10 @@ type Project struct {
 }
 
 type CreateProjectInput struct {
-	Name          string `json:"name" binding:"required,min=2,max=120"`
-	Slug          string `json:"slug" binding:"required,min=2,max=80"`
-	DefaultLocale string `json:"defaultLocale" binding:"omitempty,oneof=hr en"`
+	Name           string `json:"name" binding:"required,min=2,max=120"`
+	Slug           string `json:"slug" binding:"required,min=2,max=80"`
+	DefaultLocale  string `json:"defaultLocale" binding:"omitempty,oneof=hr en"`
+	AdminProjectID string `json:"adminProjectId"`
 }
 
 type AppState struct {
