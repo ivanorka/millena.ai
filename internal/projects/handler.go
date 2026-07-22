@@ -83,7 +83,15 @@ func (h *Handler) Create(c *gin.Context) {
 	if !h.databaseAvailable(c) {
 		return
 	}
-
+	allowed, err := h.repository.CanCreateProjects(c.Request.Context(), auth.UserID(c))
+	if err != nil {
+		writeError(c, http.StatusInternalServerError, "internal_error", "Project permissions could not be checked.")
+		return
+	}
+	if !allowed {
+		writeError(c, http.StatusForbidden, "administrator_required", "Only project administrators can create projects.")
+		return
+	}
 	project, err := h.repository.Create(c.Request.Context(), input, auth.UserID(c))
 	if postgresErrorCode(err) == "23505" {
 		writeError(c, http.StatusConflict, "slug_conflict", "A project with this slug already exists.")

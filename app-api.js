@@ -5072,6 +5072,8 @@
     openDomainModal("project-modal");
     const newProjectForm = document.querySelector("#project-new-form");
     const newProjectToggle = document.querySelector("#project-new-toggle");
+    const canCreate = (window.__millenaProjectAccess || []).some((access) => access.role === "owner");
+    if (newProjectToggle) newProjectToggle.hidden = !canCreate;
     if (newProjectForm) newProjectForm.hidden = true;
     if (newProjectToggle) newProjectToggle.setAttribute("aria-expanded", "false");
     try {
@@ -5082,6 +5084,10 @@
   }
 
   async function createProject() {
+    if (!(window.__millenaProjectAccess || []).some((access) => access.role === "owner")) {
+      showDomainError(currentLanguage === "hr" ? "Izrada projekta" : "Creating project", new Error(currentLanguage === "hr" ? "Samo administrator može dodati projekt." : "Only an administrator can add a project."));
+      return;
+    }
     const button = document.querySelector("#project-create");
     button.disabled = true;
     try {
@@ -5378,6 +5384,8 @@
       node.dataset.en = projectAccess.role === "owner" ? "Client administrator" : projectAccess.role;
       node.textContent = node.dataset[currentLanguage];
     });
+    const permissionsPanel = document.querySelector("#team-admin-actions");
+    if (permissionsPanel) permissionsPanel.hidden = !projectRoleAllows("owner");
     document.querySelectorAll(".usage-row strong").forEach((node) => {
       node.textContent = publicationLimit == null ? `${publishedThisMonth} / ∞` : `${publishedThisMonth} / ${publicationLimit}`;
       node.title = planName;
@@ -5826,6 +5834,14 @@
   }));
 
   document.querySelector("#team-add")?.addEventListener("click", () => openTeamModal());
+  document.querySelector("#permissions-manage")?.addEventListener("click", () => {
+    if (!projectRoleAllows("owner")) return;
+    openActionModal(
+      currentLanguage === "hr" ? "To be done" : "To be done",
+      currentLanguage === "hr" ? "Detaljno uređivanje pojedinačnih korisničkih prava bit će dostupno u sljedećoj fazi." : "Detailed editing of individual user permissions will be available in the next phase.",
+      currentLanguage === "hr" ? "Upravljanje korisničkim pravima" : "User permission management",
+    );
+  });
   document.querySelector("#team-list")?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-team-edit]");
     const member = button && teamMembers.find((candidate) => candidate.userId === button.dataset.teamEdit);
