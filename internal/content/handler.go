@@ -125,6 +125,39 @@ func (h *Handler) ApproveReview(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": item})
 }
 
+func (h *Handler) ReturnForRevision(c *gin.Context) {
+	if !h.databaseAvailable(c) {
+		return
+	}
+	var input struct {
+		Comment string `json:"comment"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		writeContentError(c, http.StatusUnprocessableEntity, "validation_error", "A review comment is required.")
+		return
+	}
+	input.Comment = strings.TrimSpace(input.Comment)
+	if utf8.RuneCountInString(input.Comment) < 3 || utf8.RuneCountInString(input.Comment) > 2000 {
+		writeContentError(c, http.StatusUnprocessableEntity, "validation_error", "A review comment must contain between 3 and 2000 characters.")
+		return
+	}
+	user, _ := auth.CurrentUser(c)
+	item, err := h.repository.ReturnForRevision(c.Request.Context(), c.Param("projectID"), c.Param("itemID"), user.ID, user.DisplayName, input.Comment)
+	if errors.Is(err, ErrNotFound) {
+		writeContentError(c, http.StatusNotFound, "not_found", "Content entry was not found.")
+		return
+	}
+	if errors.Is(err, ErrReviewNotPending) {
+		writeContentError(c, http.StatusConflict, "review_not_pending", "Only content awaiting review can be returned for revision.")
+		return
+	}
+	if writeContentDatabaseError(c, err, "Content review could not be saved.") {
+		return
+	}
+	_ = h.repository.RecordAudit(c.Request.Context(), c.Param("projectID"), user.ID, "content.revision_requested", "content_item", &item.ID, map[string]any{"reviewer": user.DisplayName, "comment": input.Comment, "status": item.Status})
+	c.JSON(http.StatusOK, gin.H{"data": item})
+}
+
 func (h *Handler) Delete(c *gin.Context) {
 	if !h.databaseAvailable(c) {
 		return

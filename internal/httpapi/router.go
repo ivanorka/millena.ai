@@ -50,6 +50,7 @@ func NewRouter(options RouterOptions) *gin.Engine {
 	secured := api.Group("")
 	secured.Use(authHandler.RequireSession())
 	secured.GET("/auth/me", authHandler.Me)
+	secured.PUT("/auth/account", authHandler.UpdateAccount)
 	secured.POST("/auth/logout", authHandler.Logout)
 
 	allProjectRoles := authHandler.RequireProjectRoles("owner", "lead", "editor", "contributor", "viewer")
@@ -102,6 +103,7 @@ func NewRouter(options RouterOptions) *gin.Engine {
 	secured.POST("/projects/:projectID/content/items", publishProjectRoles, contentHandler.Create)
 	secured.PUT("/projects/:projectID/content/items/:itemID", publishProjectRoles, contentHandler.Update)
 	secured.POST("/projects/:projectID/content/items/:itemID/review", publishProjectRoles, contentHandler.ApproveReview)
+	secured.POST("/projects/:projectID/content/items/:itemID/return-for-revision", publishProjectRoles, contentHandler.ReturnForRevision)
 	secured.DELETE("/projects/:projectID/content/items/:itemID", manageProjectRoles, contentHandler.Delete)
 	secured.GET("/projects/:projectID/content/items/:itemID/variants", allProjectRoles, contentHandler.ListVariants)
 	secured.PUT("/projects/:projectID/content/items/:itemID/variants", publishProjectRoles, contentHandler.SaveVariant)

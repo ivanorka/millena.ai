@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#171719" />
     <title>Millena AI | Aplikacija</title>
     <link rel="icon" href="assets/millena-mark.png" type="image/png" />
-    <link rel="stylesheet" href="styles.css?v=20260722h" />
+    <link rel="stylesheet" href="styles.css?v=20260722l" />
   </head>
   <body>
     <a class="skip-link" href="#app-main" data-hr="Preskoči na sadržaj" data-en="Skip to content">Preskoči na sadržaj</a>
@@ -97,11 +97,14 @@
             <strong>—</strong>
           </div>
           <div class="usage-track"><span></span></div>
-          <button class="profile-button" type="button" data-logout title="Odjava">
+          <div class="profile-actions">
+          <button class="profile-button" type="button" data-account-open title="Uredi profil">
             <span class="avatar">…</span>
             <span><strong data-hr="Učitavam korisnika…" data-en="Loading user…">Učitavam korisnika…</strong><small data-hr="Učitavam prava…" data-en="Loading access…">Učitavam prava…</small></span>
-            <i data-lucide="log-out"></i>
+            <i data-lucide="settings-2"></i>
           </button>
+          <button class="profile-logout" type="button" data-logout title="Odjava" aria-label="Odjava"><i data-lucide="log-out"></i></button>
+          </div>
         </div>
       </aside>
 
@@ -414,7 +417,7 @@
                 <div class="channel-tabs"><button class="active" type="button" data-social-channel="linkedin"><i data-lucide="linkedin"></i><span>LinkedIn</span></button><button type="button" data-social-channel="instagram"><i data-lucide="instagram"></i><span>Instagram</span></button><button type="button" data-social-channel="facebook"><i data-lucide="facebook"></i><span>Facebook</span></button><button type="button" data-social-channel="youtube"><i data-lucide="youtube"></i><span>YouTube</span></button><button type="button" data-social-channel="x"><i data-lucide="at-sign"></i><span>X</span></button><button type="button" data-social-channel="reddit"><i data-lucide="message-square"></i><span>Reddit</span></button><button type="button" data-social-channel="pinterest"><i data-lucide="pin"></i><span>Pinterest</span></button><button type="button" data-social-channel="threads"><i data-lucide="at-sign"></i><span>Threads</span></button><button type="button" data-screen-target="channels" aria-label="Upravljaj kanalima"><i data-lucide="settings-2"></i></button></div>
                 <div class="editor-toolbar"><div><button type="button" title="Markdown podebljanje" data-editor-command="bold"><i data-lucide="bold"></i></button><button type="button" title="Tekstualna lista" data-editor-command="insertUnorderedList"><i data-lucide="list"></i></button><button type="button" title="Dodaj URL poveznicu" data-editor-command="createLink"><i data-lucide="link"></i></button><button type="button" title="Dodaj emoji" data-editor-command="emoji"><i data-lucide="smile"></i></button></div><button class="rewrite-button" type="button"><i data-lucide="wand-sparkles"></i><span data-hr="Preradi" data-en="Rewrite">Preradi</span></button></div>
                 <div class="post-editor" contenteditable="true" data-placeholder-hr="Napišite objavu ili izradite skicu u bazi sadržaja." data-placeholder-en="Write a post or create a draft in the content database."></div>
-                <div class="media-strip"><div class="media-assets" id="social-media-assets" aria-live="polite"></div><input id="social-media-input" type="file" accept="image/*,video/*" multiple hidden /><button id="social-media-add" type="button"><i data-lucide="plus"></i><span data-hr="Dodaj medij" data-en="Add media">Dodaj medij</span></button></div>
+                <div class="media-strip"><div class="media-assets" id="social-media-assets" aria-live="polite"></div><input id="social-media-input" type="file" accept="image/*,video/*" multiple hidden /><button class="social-media-add" id="social-media-add" type="button"><i data-lucide="image-plus"></i><span data-hr="Dodaj fotografiju ili video" data-en="Add photo or video">Dodaj fotografiju ili video</span></button></div>
                 <div class="editor-foot"><span id="social-character-count">0 / 3.000</span><span><i data-lucide="circle-check"></i><span id="social-tone-status" data-hr="Lokalna provjerna lista koristi strategiju" data-en="The local checklist uses the strategy">Lokalna provjerna lista koristi strategiju</span></span></div>
               </section>
               <aside class="publish-panel">
@@ -532,8 +535,23 @@
         <div class="content-editor-grid"><label class="field span-2"><span data-hr="Naslov" data-en="Title">Naslov</span><input id="content-item-title" type="text" maxlength="180" required /></label><label class="field"><span data-hr="Kategorija" data-en="Category">Kategorija</span><select id="content-item-kind"><option value="social">Social</option><option value="blog">Blog</option><option value="newsletter">Newsletter</option><option value="press_release" data-hr="Priopćenje" data-en="Press release">Priopćenje</option><option value="case_study" data-hr="Studija slučaja" data-en="Case study">Studija slučaja</option><option value="event" data-hr="Događaj" data-en="Event">Događaj</option><option value="source" data-hr="Izvorni materijal" data-en="Source material">Izvorni materijal</option></select></label><label class="field"><span>Status</span><select id="content-item-status"><option value="draft" data-hr="Skica" data-en="Draft">Skica</option><option value="in_review" data-hr="Za pregled" data-en="In review">Za pregled</option><option value="approved" data-hr="Odobreno" data-en="Approved">Odobreno</option><option value="scheduled" data-hr="Zakazano" data-en="Scheduled">Zakazano</option><option value="published" data-hr="Objavljeno" data-en="Published">Objavljeno</option><option value="failed" data-hr="Greška" data-en="Failed">Greška</option></select></label><label class="field span-2"><span data-hr="Sažetak za tablicu" data-en="Table summary">Sažetak za tablicu</span><input id="content-item-summary" type="text" maxlength="500" /></label><label class="field"><span data-hr="Kanali, odvojeni zarezom" data-en="Channels, comma-separated">Kanali, odvojeni zarezom</span><input id="content-item-channels" type="text" data-placeholder-hr="linkedin, instagram, blog" data-placeholder-en="linkedin, instagram, blog" /></label><label class="field"><span data-hr="Termin (za status Zakazano)" data-en="Schedule (for Scheduled status)">Termin (za status Zakazano)</span><input id="content-item-scheduled" type="datetime-local" /></label><label class="field span-2"><span data-hr="Tekst sadržaja" data-en="Content copy">Tekst sadržaja</span><textarea id="content-item-body" rows="12" maxlength="100000" data-placeholder-hr="Napišite prvi nacrt ili zatražite AI generiranje iz strategije." data-placeholder-en="Write a first draft or generate one from the strategy."></textarea></label></div>
         <div class="content-ai-result" id="content-ai-result" hidden><i data-lucide="check-circle-2"></i><span></span></div>
         <p class="content-review-meta" id="content-review-meta" hidden></p>
-        <div class="modal-actions split"><span><button class="text-button danger" id="content-delete" type="button"><i data-lucide="trash-2"></i><span data-hr="Obriši zapis" data-en="Delete entry">Obriši zapis</span></button><button class="secondary-button review-approve-button" id="content-approve-review" type="button" hidden><i data-lucide="badge-check"></i><span data-hr="Pregledaj i odobri" data-en="Review and approve">Pregledaj i odobri</span></button></span><span><button class="secondary-button" type="button" data-content-close data-hr="Odustani" data-en="Cancel">Odustani</button><button class="primary-button" id="content-save" type="button"><i data-lucide="database"></i><span data-hr="Spremi u bazu" data-en="Save to database">Spremi u bazu</span></button></span></div>
+        <label class="field content-review-comment" id="content-review-comment-wrap" hidden><span data-hr="Komentar za doradu" data-en="Revision comment">Komentar za doradu</span><textarea id="content-review-comment" rows="3" maxlength="2000" data-placeholder-hr="Što treba doraditi prije ponovnog slanja na pregled?" data-placeholder-en="What should be revised before sending it for review again?"></textarea></label>
+        <div class="modal-actions split"><span><button class="text-button danger" id="content-delete" type="button"><i data-lucide="trash-2"></i><span data-hr="Obriši zapis" data-en="Delete entry">Obriši zapis</span></button><button class="secondary-button review-return-button" id="content-return-review" type="button" hidden><i data-lucide="rotate-ccw"></i><span data-hr="Vrati u izradu" data-en="Return for revision">Vrati u izradu</span></button><button class="secondary-button review-approve-button" id="content-approve-review" type="button" hidden><i data-lucide="badge-check"></i><span data-hr="Pregledaj i odobri" data-en="Review and approve">Pregledaj i odobri</span></button></span><span><button class="secondary-button" type="button" data-content-close data-hr="Odustani" data-en="Cancel">Odustani</button><button class="primary-button" id="content-save" type="button"><i data-lucide="database"></i><span data-hr="Spremi u bazu" data-en="Save to database">Spremi u bazu</span></button></span></div>
       </div>
+    </div>
+
+    <div class="modal-backdrop" id="account-modal" aria-hidden="true">
+      <div class="modal account-modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title">
+        <div class="modal-head"><div><small data-hr="Moj račun" data-en="My account">Moj račun</small><h2 id="account-modal-title" data-hr="Profil i sigurnost" data-en="Profile and security">Profil i sigurnost</h2></div><button class="icon-button" type="button" data-account-close aria-label="Zatvori"><i data-lucide="x"></i></button></div>
+        <section class="account-summary"><span class="avatar" id="account-modal-avatar">—</span><div><strong id="account-modal-name">—</strong><small id="account-modal-email">—</small></div><span class="account-security"><i data-lucide="shield-check"></i><span data-hr="Zaštićen račun" data-en="Protected account">Zaštićen račun</span></span></section>
+        <label class="field"><span data-hr="Ime i prezime" data-en="Full name">Ime i prezime</span><input id="account-display-name" type="text" maxlength="120" autocomplete="name" required /></label>
+        <fieldset class="account-password-fields"><legend data-hr="Promjena lozinke" data-en="Change password">Promjena lozinke</legend><p data-hr="Ostavite prazno ako lozinku ne želite mijenjati." data-en="Leave empty if you do not want to change your password.">Ostavite prazno ako lozinku ne želite mijenjati.</p><label class="field"><span data-hr="Trenutačna lozinka" data-en="Current password">Trenutačna lozinka</span><input id="account-current-password" type="password" autocomplete="current-password" /></label><label class="field"><span data-hr="Nova lozinka" data-en="New password">Nova lozinka</span><input id="account-new-password" type="password" minlength="8" maxlength="128" autocomplete="new-password" /></label></fieldset>
+        <div class="modal-actions split"><button class="text-button account-logout-action" type="button" data-logout><i data-lucide="log-out"></i><span data-hr="Odjavi se" data-en="Sign out">Odjavi se</span></button><span><button class="secondary-button" type="button" data-account-close data-hr="Odustani" data-en="Cancel">Odustani</button><button class="primary-button" id="account-save" type="button"><i data-lucide="save"></i><span data-hr="Spremi promjene" data-en="Save changes">Spremi promjene</span></button></span></div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="media-preview-modal" aria-hidden="true">
+      <div class="modal media-preview-modal" role="dialog" aria-modal="true" aria-labelledby="media-preview-title"><div class="modal-head"><div><small data-hr="Medij objave" data-en="Post media">Medij objave</small><h2 id="media-preview-title">—</h2></div><button class="icon-button" type="button" data-media-preview-close aria-label="Zatvori"><i data-lucide="x"></i></button></div><div class="media-preview-stage" id="media-preview-stage"></div><div class="modal-actions"><button class="secondary-button" type="button" data-media-preview-close data-hr="Zatvori pregled" data-en="Close preview">Zatvori pregled</button></div></div>
     </div>
 
     <div class="modal-backdrop" id="calendar-modal" aria-hidden="true">
@@ -619,7 +637,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"><span><i data-lucide="check"></i></span><div><strong data-hr="Spremljeno" data-en="Saved">Spremljeno</strong><small id="toast-message" data-hr="Promjena je uspješno spremljena." data-en="Your change was saved successfully.">Promjena je uspješno spremljena.</small></div></div>
 
     <script src="assets/lucide.min.js"></script>
-    <script src="script.js?v=20260722h"></script>
-    <script src="app-api.js?v=20260722h"></script>
+    <script src="script.js?v=20260722j"></script>
+    <script src="app-api.js?v=20260722l"></script>
   </body>
 </html>

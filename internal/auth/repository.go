@@ -16,6 +16,7 @@ import (
 var ErrNotFound = errors.New("authentication record not found")
 var ErrEmailConflict = errors.New("email already exists")
 var ErrSlugConflict = errors.New("project slug already exists")
+var ErrCurrentPasswordInvalid = errors.New("current password is invalid")
 
 type Repository struct {
 	pool *pgxpool.Pool
@@ -76,6 +77,12 @@ func (r *Repository) EnsureMPRWorkspace(ctx context.Context, email, displayName,
 		if _, err := tx.Exec(ctx, `
 			UPDATE users SET password_hash = $2, display_name = $3, status = 'active', updated_at = now()
 			WHERE id = $1::uuid`, userID, string(passwordHash), displayName); err != nil {
+			return err
+		}
+	} else if password != "millena-demo" && bcrypt.CompareHashAndPassword([]byte(*existingHash), []byte("millena-demo")) == nil {
+		// Migrate only the old public demo credential once. A password changed by the
+		// account owner is never replaced during a normal application startup.
+		if _, err := tx.Exec(ctx, `UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1::uuid`, userID, string(passwordHash)); err != nil {
 			return err
 		}
 	}
@@ -297,6 +304,42 @@ func (r *Repository) Authenticate(ctx context.Context, email, password string) (
 	}
 	now := time.Now().UTC()
 	user.LastLoginAt = &now
+	return user, nil
+}
+
+func (r *Repository) UpdateAccount(ctx context.Context, userID, displayName, currentPassword, newPassword string) (User, error) {
+	var user User
+	err := r.pool.QueryRow(ctx, `
+		SELECT id::text, email, display_name, status, password_hash, last_login_at, created_at, updated_at
+		FROM users WHERE id = $1::uuid AND status = 'active'`, userID).Scan(
+		&user.ID, &user.Email, &user.DisplayName, &user.Status, &user.PasswordHash,
+		&user.LastLoginAt, &user.CreatedAt, &user.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, ErrNotFound
+	}
+	if err != nil {
+		return User{}, err
+	}
+	if newPassword != "" {
+		if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword)) != nil {
+			return User{}, ErrCurrentPasswordInvalid
+		}
+		hash, hashErr := bcrypt.GenerateFromPassword([]byte(newPassword), 12)
+		if hashErr != nil {
+			return User{}, hashErr
+		}
+		user.PasswordHash = string(hash)
+	}
+	if err := r.pool.QueryRow(ctx, `
+		UPDATE users SET display_name = $2, password_hash = $3, updated_at = now()
+		WHERE id = $1::uuid
+		RETURNING id::text, email, display_name, status, last_login_at, created_at, updated_at`,
+		userID, displayName, user.PasswordHash).Scan(
+		&user.ID, &user.Email, &user.DisplayName, &user.Status,
+		&user.LastLoginAt, &user.CreatedAt, &user.UpdatedAt); err != nil {
+		return User{}, err
+	}
+	user.PasswordHash = ""
 	return user, nil
 }
 

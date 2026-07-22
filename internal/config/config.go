@@ -42,9 +42,9 @@ func Load() (Config, error) {
 	if err != nil || sessionTTL < time.Hour {
 		return Config{}, fmt.Errorf("SESSION_TTL must be a duration of at least one hour")
 	}
-	demoPassword := envOrDefault("DEMO_ADMIN_PASSWORD", "millena-demo")
-	if len(demoPassword) < 10 {
-		return Config{}, fmt.Errorf("DEMO_ADMIN_PASSWORD must contain at least 10 characters")
+	demoPassword := envOrDefault("DEMO_ADMIN_PASSWORD", "irena123")
+	if len(demoPassword) < 8 {
+		return Config{}, fmt.Errorf("DEMO_ADMIN_PASSWORD must contain at least 8 characters")
 	}
 	aiProvider := strings.ToLower(envOrDefault("AI_PROVIDER", "local"))
 	if aiProvider != "local" && aiProvider != "ollama" {

@@ -209,6 +209,36 @@ func (r *Repository) ApproveReview(ctx context.Context, projectID, itemID, revie
 	return Item{}, ErrReviewNotPending
 }
 
+func (r *Repository) ReturnForRevision(ctx context.Context, projectID, itemID, reviewerID, reviewerName, comment string) (Item, error) {
+	item, err := scanItem(r.pool.QueryRow(ctx, `
+		UPDATE content_items
+		SET status = 'draft',
+		    metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
+		      'reviewDecision', 'revision_requested',
+		      'reviewedBy', $3,
+		      'reviewedByName', $4,
+		      'reviewedAt', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+		      'reviewComment', $5
+		    ),
+		    revision = revision + 1,
+		    updated_at = now()
+		WHERE project_id = $1::uuid AND id = $2::uuid AND status = 'in_review'
+		RETURNING id::text, project_id::text, author_id::text, kind, status, title, summary,
+		          body, channels, scheduled_for, source, revision, metadata, created_at, updated_at`,
+		projectID, itemID, reviewerID, reviewerName, comment))
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return item, err
+	}
+	var exists bool
+	if err := r.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM content_items WHERE project_id = $1::uuid AND id = $2::uuid)`, projectID, itemID).Scan(&exists); err != nil {
+		return Item{}, err
+	}
+	if !exists {
+		return Item{}, ErrNotFound
+	}
+	return Item{}, ErrReviewNotPending
+}
+
 func defaultVariantsCanConsume(input SaveInput) bool {
 	if input.Status != "scheduled" && input.Status != "published" {
 		return false

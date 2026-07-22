@@ -46,8 +46,8 @@ func (h *Handler) Register(c *gin.Context) {
 		writeError(c, http.StatusUnprocessableEntity, "invalid_email", "A valid email address is required.")
 		return
 	}
-	if len(input.Password) < 10 || len(input.Password) > 128 {
-		writeError(c, http.StatusUnprocessableEntity, "weak_password", "Password must contain between 10 and 128 characters.")
+	if len(input.Password) < 8 || len(input.Password) > 128 {
+		writeError(c, http.StatusUnprocessableEntity, "weak_password", "Password must contain between 8 and 128 characters.")
 		return
 	}
 	input.ProjectSlug = projectSlug(input.OrganizationName)
@@ -118,6 +118,50 @@ func (h *Handler) Me(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": SessionUser{User: user, Projects: projects}})
+}
+
+func (h *Handler) UpdateAccount(c *gin.Context) {
+	if h.repository == nil {
+		writeError(c, http.StatusServiceUnavailable, "database_unavailable", "Database is not configured.")
+		return
+	}
+	var input AccountInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		writeError(c, http.StatusUnprocessableEntity, "validation_error", "Profile fields must use valid JSON values.")
+		return
+	}
+	input.DisplayName = strings.TrimSpace(input.DisplayName)
+	if len(input.DisplayName) < 2 || len(input.DisplayName) > 120 {
+		writeError(c, http.StatusUnprocessableEntity, "validation_error", "Name must contain between 2 and 120 characters.")
+		return
+	}
+	if input.NewPassword != "" && (len(input.NewPassword) < 8 || len(input.NewPassword) > 128) {
+		writeError(c, http.StatusUnprocessableEntity, "weak_password", "New password must contain between 8 and 128 characters.")
+		return
+	}
+	if input.NewPassword != "" && input.CurrentPassword == "" {
+		writeError(c, http.StatusUnprocessableEntity, "current_password_required", "Current password is required to set a new password.")
+		return
+	}
+	user, ok := CurrentUser(c)
+	if !ok {
+		writeError(c, http.StatusUnauthorized, "authentication_required", "Sign-in is required.")
+		return
+	}
+	updated, err := h.repository.UpdateAccount(c.Request.Context(), user.ID, input.DisplayName, input.CurrentPassword, input.NewPassword)
+	if errors.Is(err, ErrNotFound) {
+		writeError(c, http.StatusNotFound, "not_found", "Account was not found.")
+		return
+	}
+	if errors.Is(err, ErrCurrentPasswordInvalid) {
+		writeError(c, http.StatusUnauthorized, "current_password_invalid", "Current password is incorrect.")
+		return
+	}
+	if err != nil {
+		writeError(c, http.StatusInternalServerError, "internal_error", "Account could not be updated.")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": updated})
 }
 
 func (h *Handler) Logout(c *gin.Context) {

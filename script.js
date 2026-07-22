@@ -341,12 +341,14 @@ const logoutAPIBase = window.location.port === "8000"
   ? `${window.location.protocol}//${window.location.hostname}:8080/api/v1`
   : "/api/v1";
 
-document.querySelector("[data-logout]")?.addEventListener("click", async () => {
-  try {
-    await fetch(`${logoutAPIBase}/auth/logout`, { method: "POST", credentials: "include" });
-  } finally {
-    window.location.href = "login.html";
-  }
+document.querySelectorAll("[data-logout]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    try {
+      await fetch(`${logoutAPIBase}/auth/logout`, { method: "POST", credentials: "include" });
+    } finally {
+      window.location.href = "login.html";
+    }
+  });
 });
 
 document.addEventListener("keydown", (event) => {

@@ -743,9 +743,22 @@
       const preview = document.createElement("span");
       preview.className = "asset-preview";
       const media = document.createElement(asset.mimeType?.startsWith("video/") ? "video" : "img");
-      if (media.tagName === "VIDEO") media.controls = true;
+      if (media.tagName === "VIDEO") media.muted = true;
       else media.alt = asset.filename;
       assetObjectURL(asset).then((url) => { media.src = url; }).catch((error) => console.error("Social media preview failed", error));
+      preview.title = currentLanguage === "hr" ? `Otvori pregled: ${asset.filename}` : `Open preview: ${asset.filename}`;
+      preview.setAttribute("role", "button");
+      preview.tabIndex = 0;
+      const openLabel = document.createElement("span");
+      openLabel.className = "asset-preview-open";
+      const openIcon = document.createElement("i");
+      openIcon.dataset.lucide = "expand";
+      const openText = document.createElement("span");
+      openText.textContent = currentLanguage === "hr" ? "Pregled" : "Preview";
+      openLabel.append(openIcon, openText);
+      const openPreview = () => openSocialMediaPreview(asset);
+      preview.addEventListener("click", (event) => { if (!event.target.closest("button")) openPreview(); });
+      preview.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openPreview(); } });
       const remove = document.createElement("button");
       remove.type = "button";
       remove.setAttribute("aria-label", currentLanguage === "hr" ? "Ukloni medij" : "Remove media");
@@ -753,11 +766,35 @@
       icon.dataset.lucide = "x";
       remove.append(icon);
       remove.addEventListener("click", () => removeSocialMediaAsset(asset));
-      preview.append(media, remove);
+      preview.append(media, openLabel, remove);
       root.append(preview);
     });
     updateSocialQuality();
     refreshIcons();
+  }
+
+  async function openSocialMediaPreview(asset) {
+    const stage = document.querySelector("#media-preview-stage");
+    if (!stage || !asset) return;
+    stage.replaceChildren();
+    setText("#media-preview-title", asset.filename || (currentLanguage === "hr" ? "Pregled medija" : "Media preview"));
+    const media = document.createElement(asset.mimeType?.startsWith("video/") ? "video" : "img");
+    if (media.tagName === "VIDEO") media.controls = true;
+    else media.alt = asset.filename || "";
+    stage.append(media);
+    openDomainModal("media-preview-modal");
+    try {
+      media.src = await assetObjectURL(asset);
+    } catch (error) {
+      closeDomainModal("media-preview-modal");
+      showDomainError(currentLanguage === "hr" ? "Pregled medija" : "Media preview", error);
+    }
+  }
+
+  function closeSocialMediaPreview() {
+    const stage = document.querySelector("#media-preview-stage");
+    stage?.replaceChildren();
+    closeDomainModal("media-preview-modal");
   }
 
   async function removeSocialMediaAsset(asset) {
@@ -1411,6 +1448,10 @@
     const reviewer = item?.metadata?.reviewedByName;
     if (!reviewer) return "";
     const reviewedAt = item.metadata?.reviewedAt ? ` · ${formatDateTime(item.metadata.reviewedAt)}` : "";
+    if (item.metadata?.reviewDecision === "revision_requested") {
+      const comment = item.metadata?.reviewComment ? ` — ${item.metadata.reviewComment}` : "";
+      return currentLanguage === "hr" ? `Vraćeno u izradu: ${reviewer}${reviewedAt}${comment}` : `Returned for revision by ${reviewer}${reviewedAt}${comment}`;
+    }
     return currentLanguage === "hr" ? `Pregledao/la ${reviewer}${reviewedAt}` : `Reviewed by ${reviewer}${reviewedAt}`;
   }
 
@@ -1958,6 +1999,12 @@
     document.querySelector("#content-delete").hidden = !item;
     const approveReview = document.querySelector("#content-approve-review");
     if (approveReview) approveReview.hidden = !item || item.status !== "in_review" || !projectRoleAllows("owner", "lead", "editor");
+    const returnReview = document.querySelector("#content-return-review");
+    if (returnReview) returnReview.hidden = !item || item.status !== "in_review" || !projectRoleAllows("owner", "lead", "editor");
+    const reviewComment = document.querySelector("#content-review-comment");
+    if (reviewComment) reviewComment.value = "";
+    const reviewCommentWrap = document.querySelector("#content-review-comment-wrap");
+    if (reviewCommentWrap) reviewCommentWrap.hidden = !item || item.status !== "in_review" || !projectRoleAllows("owner", "lead", "editor");
     const reviewMeta = document.querySelector("#content-review-meta");
     if (reviewMeta) {
       const reviewLabel = contentReviewLabel(item);
@@ -1982,6 +2029,47 @@
     modal.classList.remove("open");
     modal.setAttribute("aria-hidden", "true");
     document.body.style.overflow = "";
+  }
+
+  function openAccountModal() {
+    if (!sessionUser) return;
+    const initials = sessionUser.displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "AD";
+    document.querySelector("#account-modal-avatar").textContent = initials;
+    document.querySelector("#account-modal-name").textContent = sessionUser.displayName;
+    document.querySelector("#account-modal-email").textContent = sessionUser.email;
+    document.querySelector("#account-display-name").value = sessionUser.displayName;
+    document.querySelector("#account-current-password").value = "";
+    document.querySelector("#account-new-password").value = "";
+    openDomainModal("account-modal");
+    document.querySelector("#account-display-name")?.focus();
+  }
+
+  function closeAccountModal() {
+    closeDomainModal("account-modal");
+  }
+
+  async function saveAccount() {
+    const button = document.querySelector("#account-save");
+    const displayName = document.querySelector("#account-display-name")?.value.trim() || "";
+    const currentPassword = document.querySelector("#account-current-password")?.value || "";
+    const newPassword = document.querySelector("#account-new-password")?.value || "";
+    if (!displayName || (newPassword && !currentPassword)) {
+      (newPassword && !currentPassword ? document.querySelector("#account-current-password") : document.querySelector("#account-display-name"))?.focus();
+      return;
+    }
+    if (button) button.disabled = true;
+    try {
+      const user = await apiRequest("/auth/account", { method: "PUT", body: JSON.stringify({ displayName, currentPassword, newPassword }) });
+      sessionUser = user;
+      renderIdentity();
+      closeAccountModal();
+      showToast("contentSaved");
+    } catch (error) {
+      console.error("Millena account update failed", error);
+      showDomainError(currentLanguage === "hr" ? "Spremanje profila" : "Saving profile", error);
+    } finally {
+      if (button) button.disabled = false;
+    }
   }
 
   function contentPayload() {
@@ -2050,6 +2138,28 @@
       showToast("contentSaved");
     } catch (error) {
       console.error("Millena content review failed", error);
+      showToast("contentError");
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  async function returnContentForRevision() {
+    const id = document.querySelector("#content-item-id")?.value;
+    const button = document.querySelector("#content-return-review");
+    const comment = document.querySelector("#content-review-comment")?.value.trim();
+    if (!id || !button || !comment) {
+      document.querySelector("#content-review-comment")?.focus();
+      return;
+    }
+    button.disabled = true;
+    try {
+      await apiRequest(`/projects/${projectID}/content/items/${id}/return-for-revision`, { method: "POST", body: JSON.stringify({ comment }) });
+      closeContentModal();
+      await Promise.all([loadContent(), loadDashboard()]);
+      showToast("contentSaved");
+    } catch (error) {
+      console.error("Millena content revision request failed", error);
       showToast("contentError");
     } finally {
       button.disabled = false;
@@ -2221,11 +2331,36 @@
       icon.dataset.lucide = contentKindIcon(item.kind);
       thumb.append(icon);
       const copy = document.createElement("span");
+      copy.className = "content-main dashboard-content-main";
       const title = document.createElement("strong");
       title.textContent = item.title;
-      const detail = document.createElement("small");
-      detail.textContent = [contentKindLabel(item.kind), contentReviewLabel(item)].filter(Boolean).join(" · ");
-      copy.append(title, detail);
+      const excerpt = document.createElement("small");
+      excerpt.className = "dashboard-content-excerpt";
+      excerpt.textContent = item.summary || item.body?.replace(/\s+/g, " ").trim().slice(0, 110) || (currentLanguage === "hr" ? "Sadržaj je spreman za uređivanje." : "Content is ready to edit.");
+      const meta = document.createElement("span");
+      meta.className = "dashboard-content-meta";
+      const kind = document.createElement("span");
+      kind.className = `dashboard-kind-pill ${item.kind}`;
+      kind.title = contentKindLabel(item.kind);
+      kind.setAttribute("aria-label", contentKindLabel(item.kind));
+      const kindIcon = document.createElement("i");
+      kindIcon.dataset.lucide = contentKindIcon(item.kind);
+      kind.append(kindIcon);
+      meta.append(kind);
+      (item.channels || []).slice(0, 2).forEach((channel) => {
+        const channelTag = document.createElement("span");
+        channelTag.className = "dashboard-channel-tag";
+        channelTag.textContent = channel.replace(/(^|[_-])(\w)/g, (_, prefix, letter) => `${prefix ? " " : ""}${letter.toUpperCase()}`);
+        meta.append(channelTag);
+      });
+      const reviewLabel = contentReviewLabel(item);
+      if (reviewLabel) {
+        const review = document.createElement("small");
+        review.className = "dashboard-review-note";
+        review.textContent = reviewLabel;
+        meta.append(review);
+      }
+      copy.append(title, excerpt, meta);
       const status = document.createElement("span");
       status.className = `status-pill ${contentStatusClass(item.status)}`;
       status.textContent = contentStatusLabel(item.status);
@@ -5806,8 +5941,15 @@
     if (event.target === event.currentTarget) closeContentModal();
   });
   document.querySelector("#content-save")?.addEventListener("click", saveContentItem);
+  document.querySelectorAll("[data-account-open]").forEach((button) => button.addEventListener("click", openAccountModal));
+  document.querySelectorAll("[data-account-close]").forEach((button) => button.addEventListener("click", closeAccountModal));
+  document.querySelector("#account-modal")?.addEventListener("click", (event) => { if (event.target === event.currentTarget) closeAccountModal(); });
+  document.querySelector("#account-save")?.addEventListener("click", saveAccount);
+  document.querySelectorAll("[data-media-preview-close]").forEach((button) => button.addEventListener("click", closeSocialMediaPreview));
+  document.querySelector("#media-preview-modal")?.addEventListener("click", (event) => { if (event.target === event.currentTarget) closeSocialMediaPreview(); });
   document.querySelector("#content-delete")?.addEventListener("click", deleteContentItem);
   document.querySelector("#content-approve-review")?.addEventListener("click", approveContentReview);
+  document.querySelector("#content-return-review")?.addEventListener("click", returnContentForRevision);
   document.querySelector("#content-ai-generate")?.addEventListener("click", () => runContentAI("generate"));
   document.querySelector("#content-ai-refine")?.addEventListener("click", () => runContentAI("refine"));
   document.querySelector("#content-item-status")?.addEventListener("change", (event) => {

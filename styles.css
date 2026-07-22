@@ -363,6 +363,7 @@ svg {
   background: var(--coral);
 }
 
+.profile-actions { display: grid; grid-template-columns: minmax(0, 1fr) 32px; align-items: stretch; gap: 4px; }
 .profile-button {
   width: 100%;
   min-height: 44px;
@@ -403,6 +404,21 @@ svg {
   width: 15px;
   color: rgba(255, 255, 255, 0.34);
 }
+.profile-logout { width: 32px; border: 0; border-radius: 7px; color: rgba(255,255,255,.52); background: transparent; cursor: pointer; }
+.profile-logout:hover { color: #fff; background: rgba(255,255,255,.09); }
+.profile-logout svg { width: 15px; }
+.account-modal { max-width: 540px; }
+.account-summary { margin-bottom: 18px; padding: 14px; display: flex; align-items: center; gap: 10px; border: 1px solid #d8e6df; border-radius: 8px; background: linear-gradient(135deg, #f4fbf7, #fff); }
+.account-summary .avatar { width: 42px; height: 42px; font-size: .8rem; }
+.account-summary > div { min-width: 0; display: grid; gap: 3px; }
+.account-summary strong { font-size: .78rem; }
+.account-summary small { overflow: hidden; color: var(--muted); font-size: .62rem; text-overflow: ellipsis; white-space: nowrap; }
+.account-security { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; color: #276b4b; font-size: .58rem; font-weight: 750; }
+.account-security svg { width: 14px; }
+.account-password-fields { margin: 16px 0 0; padding: 14px; display: grid; gap: 10px; border: 1px solid var(--line); border-radius: 8px; }
+.account-password-fields legend { padding: 0 4px; font-size: .68rem; font-weight: 750; }
+.account-password-fields p { margin: -3px 0 2px; color: var(--muted); font-size: .6rem; }
+.account-logout-action { color: #a74848; }
 
 .avatar {
   width: 34px;
@@ -973,8 +989,8 @@ svg {
 
 .content-row {
   width: 100%;
-  min-height: 64px;
-  padding: 8px 4px;
+  min-height: 82px;
+  padding: 10px 7px;
   display: grid;
   grid-template-columns: 46px minmax(180px, 1fr) 76px 82px 18px;
   align-items: center;
@@ -990,7 +1006,8 @@ svg {
 }
 
 .content-row:hover {
-  background: var(--surface-2);
+  background: #fbfaff;
+  box-shadow: inset 3px 0 var(--coral);
 }
 
 .thumb {
@@ -1036,8 +1053,25 @@ svg {
 
 .content-main small {
   color: var(--subtle);
-  font-size: 0.64rem;
+  font-size: .64rem;
 }
+
+.dashboard-content-main { gap: 5px; }
+.dashboard-content-main strong { font-size: .76rem; }
+.dashboard-content-excerpt { display: -webkit-box; overflow: hidden; max-width: 620px; color: var(--muted) !important; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
+.dashboard-content-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-width: 0; }
+.dashboard-kind-pill,
+.dashboard-channel-tag { min-height: 20px; padding: 0 7px; display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; font-size: .56rem; font-weight: 750; white-space: nowrap; }
+.dashboard-kind-pill { width: 22px; padding: 0; justify-content: center; color: var(--blue); background: var(--blue-soft); cursor: help; }
+.dashboard-kind-pill svg { width: 11px; height: 11px; }
+.dashboard-kind-pill.blog { color: var(--coral-dark); background: var(--coral-soft); }
+.dashboard-kind-pill.newsletter { color: var(--purple); background: var(--purple-soft); }
+.dashboard-kind-pill.press_release { color: #96530a; background: var(--amber-soft); }
+.dashboard-kind-pill.case_study { color: var(--green); background: var(--green-soft); }
+.dashboard-kind-pill.event { color: #ad3e65; background: #fff0f5; }
+.dashboard-kind-pill.source { color: var(--muted); background: #eeeeec; }
+.dashboard-channel-tag { color: var(--muted); background: var(--surface-2); border: 1px solid var(--line); font-weight: 650; }
+.dashboard-review-note { overflow: hidden; max-width: 190px; color: #8a641f !important; font-size: .55rem !important; text-overflow: ellipsis; white-space: nowrap; }
 
 .channel-icons {
   display: flex;
@@ -2978,6 +3012,9 @@ svg {
 .content-review-meta { margin: 12px 0 0; padding: 9px 11px; display: flex; align-items: center; gap: 7px; border: 1px solid #cbe8db; border-radius: 6px; color: #276b4b; background: #f2fbf6; font-size: .62rem; }
 .review-approve-button { color: #276b4b; border-color: #b9e2cf; background: #f2fbf6; }
 .review-approve-button:hover { background: #e4f7ed; }
+.review-return-button { color: #915d19; border-color: #f0d1a7; background: #fff8ee; }
+.review-return-button:hover { background: #fff0dc; }
+.content-review-comment { margin-top: 12px; }
 .action-modal-content { padding: 18px; display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-2); }
 .action-modal-content > span { width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--green); background: var(--green-soft); }
 .action-modal-content > span svg { width: 20px; }
@@ -3547,6 +3584,20 @@ label:has(> #plan-feature-sso) {
   color: #fff;
   background: rgb(23 26 31 / 78%);
 }
+
+.social-media-add { min-height: 36px; padding: 0 12px; display: inline-flex; align-items: center; gap: 7px; border: 1px dashed #b9c8c1; border-radius: 7px; color: var(--green); background: #f6fcf8; font-size: .62rem; font-weight: 750; }
+.social-media-add:hover { border-style: solid; border-color: var(--green); background: #edf9f1; }
+.social-media-add svg { width: 16px; height: 16px; }
+.asset-preview { cursor: zoom-in; }
+.asset-preview::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, transparent 45%, rgb(20 24 28 / .48)); opacity: 0; transition: opacity .15s ease; }
+.asset-preview:hover::after { opacity: 1; }
+.asset-preview .asset-preview-open { position: absolute; z-index: 1; right: 5px; bottom: 4px; display: inline-flex; align-items: center; gap: 3px; color: #fff; font-size: .52rem; font-weight: 750; opacity: 0; pointer-events: none; }
+.asset-preview:hover .asset-preview-open { opacity: 1; }
+.asset-preview .asset-preview-open svg { width: 12px; height: 12px; }
+.media-preview-modal { width: min(760px, calc(100vw - 32px)); }
+.media-preview-stage { min-height: 240px; display: grid; place-items: center; overflow: hidden; border-radius: 8px; background: #101517; }
+.media-preview-stage img,
+.media-preview-stage video { display: block; max-width: 100%; max-height: min(66vh, 620px); object-fit: contain; }
 
 .publish-checks .check-missing {
   color: #a15c20;
