@@ -55,6 +55,7 @@ func NewRouter(options RouterOptions) *gin.Engine {
 	systemAdmin := admin.NewSystemHandler(options.Database)
 	system := secured.Group("/system", auth.RequireSuperAdmin())
 	system.GET("/users", systemAdmin.Users)
+	system.PUT("/users/bulk", systemAdmin.BulkUserStatus)
 	system.PUT("/users/:userID", systemAdmin.UpdateUser)
 	system.GET("/plans", systemAdmin.Plans)
 	system.PUT("/plans/:code", systemAdmin.UpdatePlan)

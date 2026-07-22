@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ivanorka/millena-ai/internal/auth"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -56,6 +57,29 @@ func (h *SystemHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 	c.JSON(200, gin.H{"data": gin.H{"id": id, "email": email, "displayName": name, "status": status, "systemRole": role}})
+}
+func (h *SystemHandler) BulkUserStatus(c *gin.Context) {
+	var input struct {
+		UserIDs []string `json:"userIds"`
+		Status  string   `json:"status"`
+	}
+	if c.ShouldBindJSON(&input) != nil || len(input.UserIDs) == 0 || (input.Status != "active" && input.Status != "suspended") {
+		writeError(c, 422, "validation_error", "Users and a valid status are required.")
+		return
+	}
+	actor, _ := auth.CurrentUser(c)
+	for _, id := range input.UserIDs {
+		if id == actor.ID && input.Status == "suspended" {
+			writeError(c, 409, "self_deactivation_denied", "You cannot deactivate your own super-admin account.")
+			return
+		}
+	}
+	result, err := h.pool.Exec(c, `UPDATE users SET status=$2, updated_at=now() WHERE id = ANY($1::uuid[])`, input.UserIDs, input.Status)
+	if err != nil {
+		writeError(c, 422, "validation_error", "One or more user IDs are invalid.")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": gin.H{"updated": result.RowsAffected()}})
 }
 func (h *SystemHandler) Plans(c *gin.Context) {
 	rows, err := h.pool.Query(c, `SELECT code,name,description,price_cents,currency,billing_interval,monthly_publication_limit,is_active FROM plan_catalog ORDER BY price_cents`)
