@@ -291,7 +291,7 @@ primijenite ručno redom; samo `docker compose up --build` ne ponavlja init
 skripte. Brisanje volumea (`docker compose down -v`) briše sve lokalne podatke i
 prikladno je samo kada su podaci jednokratni.
 
-Ako postojeći Compose volume već ima migracije 001–006, migracije 007–015 za
+Ako postojeći Compose volume već ima migracije 001–006, migracije 007–016 za
 `companyDescription`, projektne assete, strukturirane persone, content-media
 veze, konzistentan newsletter raspored, trajni publication ledger i zonirana
 sidra početnih automatizacija primijenite bez brisanja podataka:
@@ -306,6 +306,7 @@ docker compose exec -T db psql -1 -U millena -d millena -v ON_ERROR_STOP=1 < mig
 docker compose exec -T db psql -1 -U millena -d millena -v ON_ERROR_STOP=1 < migrations/000013_remove_unimplemented_sso_feature.up.sql
 docker compose exec -T db psql -1 -U millena -d millena -v ON_ERROR_STOP=1 < migrations/000014_timezone_aware_seed_anchors.up.sql
 docker compose exec -T db psql -1 -U millena -d millena -v ON_ERROR_STOP=1 < migrations/000015_starter_ten_publications.up.sql
+docker compose exec -T db psql -1 -U millena -d millena -v ON_ERROR_STOP=1 < migrations/000016_registration_plan_choices.up.sql
 ```
 
 Migracija 014 ponovno sidri samo nikad pokrenuta i neizmijenjena standardna
@@ -319,12 +320,12 @@ PostgreSQL, primijenite sve `migrations/*.up.sql` numeričkim redom i zatim:
 go run ./cmd/api
 ```
 
-Migracija 015 postavlja katalog početnog Starter paketa na 10 objava mjesečno;
-postojeće entitlemente ne mijenja.
+Migracija 016 postavlja javne pakete registracije: Starter (30), Optimum (100)
+i Enterprise (neograničeno); postojeće entitlemente ne mijenja.
 
 API pri pokretanju idempotentno osigurava razvojni MPR workspace. Registracija
 novog korisnika u jednoj transakciji stvara zaseban tenant, owner članstvo,
-Starter entitlement s 10 objava mjesečno, profil, početnu strategiju i sadržaj, default publiku,
+odabrani Starter, Optimum ili Enterprise entitlement, profil, početnu strategiju i sadržaj, default publiku,
 automation pravila, lokalni newsletter sandbox te početni razgovor asistenta.
 `POST /projects` također transakcijski dodaje operativni profil, pravila,
 publiku, newsletter sandbox i assistant thread; asistent uredno radi i dok novi

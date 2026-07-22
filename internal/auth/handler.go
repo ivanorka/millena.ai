@@ -37,6 +37,10 @@ func (h *Handler) Register(c *gin.Context) {
 	input.DisplayName = strings.TrimSpace(input.DisplayName)
 	input.OrganizationName = strings.TrimSpace(input.OrganizationName)
 	input.Email = strings.ToLower(strings.TrimSpace(input.Email))
+	input.PlanCode = strings.ToLower(strings.TrimSpace(input.PlanCode))
+	if input.PlanCode == "" {
+		input.PlanCode = "starter"
+	}
 	if len(input.DisplayName) < 2 || len(input.DisplayName) > 120 || len(input.OrganizationName) < 2 || len(input.OrganizationName) > 120 {
 		writeError(c, http.StatusUnprocessableEntity, "validation_error", "Name and organization must contain between 2 and 120 characters.")
 		return
@@ -48,6 +52,10 @@ func (h *Handler) Register(c *gin.Context) {
 	}
 	if len(input.Password) < 8 || len(input.Password) > 128 {
 		writeError(c, http.StatusUnprocessableEntity, "weak_password", "Password must contain between 8 and 128 characters.")
+		return
+	}
+	if !isRegistrationPlan(input.PlanCode) {
+		writeError(c, http.StatusUnprocessableEntity, "invalid_plan", "Choose Starter, Optimum or Enterprise.")
 		return
 	}
 	input.ProjectSlug = projectSlug(input.OrganizationName)

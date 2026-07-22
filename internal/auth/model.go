@@ -43,6 +43,7 @@ type RegisterInput struct {
 	Email            string `json:"email"`
 	Password         string `json:"password"`
 	OrganizationName string `json:"organizationName"`
+	PlanCode         string `json:"planCode"`
 	ProjectSlug      string `json:"-"`
 }
 

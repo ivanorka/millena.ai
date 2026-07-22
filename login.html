@@ -37,6 +37,15 @@
             <div class="register-fields" id="register-fields" hidden>
               <label class="login-field"><span data-hr="Ime i prezime" data-en="Full name">Ime i prezime</span><input type="text" name="displayName" autocomplete="name" /></label>
               <label class="login-field"><span data-hr="Organizacija" data-en="Organization">Organizacija</span><input type="text" name="organizationName" autocomplete="organization" /></label>
+              <fieldset class="registration-plan-picker">
+                <legend data-hr="Odaberite paket" data-en="Choose a plan">Odaberite paket</legend>
+                <p data-hr="Paket se primjenjuje odmah pri otvaranju računa." data-en="Your plan is applied as the account is created.">Paket se primjenjuje odmah pri otvaranju računa.</p>
+                <div class="registration-plan-options">
+                  <label class="registration-plan-card"><input type="radio" name="planCode" value="starter" checked /><span><strong>Starter</strong><small data-hr="Do 30 objava mjesečno" data-en="Up to 30 posts per month">Do 30 objava mjesečno</small></span></label>
+                  <label class="registration-plan-card"><input type="radio" name="planCode" value="optimum" /><span><strong>Optimum</strong><small data-hr="Do 100 objava mjesečno" data-en="Up to 100 posts per month">Do 100 objava mjesečno</small></span></label>
+                  <label class="registration-plan-card"><input type="radio" name="planCode" value="enterprise" /><span><strong>Enterprise</strong><small data-hr="Neograničen broj objava" data-en="Unlimited posts">Neograničen broj objava</small></span></label>
+                </div>
+              </fieldset>
             </div>
             <label class="login-field">
               <span>Email</span>
@@ -79,6 +88,6 @@
     </main>
 
     <script src="assets/lucide.min.js"></script>
-    <script src="site.js?v=20260722i"></script>
+    <script src="site.js?v=20260722j"></script>
   </body>
 </html>
