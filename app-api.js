@@ -5216,7 +5216,11 @@
       more.querySelector("span").textContent = notificationsExpanded
         ? (currentLanguage === "hr" ? "Prikaži manje" : "Show less")
         : (currentLanguage === "hr" ? "Prikaži sve" : "View all");
-      more.querySelector("i").dataset.lucide = notificationsExpanded ? "chevrons-up" : "chevrons-down";
+      const existingIcon = more.querySelector("i, svg");
+      const icon = document.createElement("i");
+      icon.dataset.lucide = notificationsExpanded ? "chevrons-up" : "chevrons-down";
+      if (existingIcon) existingIcon.replaceWith(icon);
+      else more.append(icon);
     }
     refreshIcons();
   }
