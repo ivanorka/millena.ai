@@ -4826,6 +4826,10 @@
 
   async function openProjectChooser() {
     openDomainModal("project-modal");
+    const newProjectForm = document.querySelector("#project-new-form");
+    const newProjectToggle = document.querySelector("#project-new-toggle");
+    if (newProjectForm) newProjectForm.hidden = true;
+    if (newProjectToggle) newProjectToggle.setAttribute("aria-expanded", "false");
     try {
       await loadProjectChooser();
     } catch (error) {
@@ -5511,6 +5515,14 @@
   });
 
   document.querySelector("#project-switcher")?.addEventListener("click", openProjectChooser);
+  document.querySelector("#project-new-toggle")?.addEventListener("click", (event) => {
+    const form = document.querySelector("#project-new-form");
+    if (!form) return;
+    form.hidden = !form.hidden;
+    event.currentTarget.setAttribute("aria-expanded", String(!form.hidden));
+    if (!form.hidden) document.querySelector("#project-new-name")?.focus();
+    refreshIcons();
+  });
   document.querySelectorAll("[data-project-close]").forEach((button) => button.addEventListener("click", () => closeDomainModal("project-modal")));
   document.querySelector("#project-modal")?.addEventListener("click", (event) => { if (event.target === event.currentTarget) closeDomainModal("project-modal"); });
   document.querySelector("#project-list")?.addEventListener("click", (event) => {

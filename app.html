@@ -596,9 +596,12 @@
       <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="project-modal-title">
         <div class="modal-head"><div><small data-hr="Workspace" data-en="Workspace">Workspace</small><h2 id="project-modal-title" data-hr="Projekti" data-en="Projects">Projekti</h2></div><button class="icon-button" type="button" data-project-close aria-label="Zatvori"><i data-lucide="x"></i></button></div>
         <div class="project-choice-list" id="project-list" aria-live="polite"><div class="content-loading"><i data-lucide="loader-circle"></i><span data-hr="Učitavam projekte…" data-en="Loading projects…">Učitavam projekte…</span></div></div>
-        <div class="modal-divider"><span data-hr="novi projekt" data-en="new project">novi projekt</span></div>
-        <div class="form-grid"><label class="field"><span data-hr="Naziv projekta" data-en="Project name">Naziv projekta</span><input id="project-new-name" type="text" maxlength="120" /></label><label class="field"><span>Slug</span><input id="project-new-slug" type="text" maxlength="80" placeholder="novi-projekt" /></label><label class="field"><span data-hr="Glavni jezik" data-en="Primary language">Glavni jezik</span><select id="project-new-locale"><option value="hr">Hrvatski</option><option value="en">English</option></select></label></div>
-        <div class="modal-actions"><button class="primary-button" id="project-create" type="button"><i data-lucide="folder-plus"></i><span data-hr="Kreiraj projekt" data-en="Create project">Kreiraj projekt</span></button></div>
+        <div class="modal-actions"><button class="secondary-button" id="project-new-toggle" type="button" aria-expanded="false"><i data-lucide="folder-plus"></i><span data-hr="Dodaj novi projekt" data-en="Add new project">Dodaj novi projekt</span></button></div>
+        <div id="project-new-form" hidden>
+          <div class="modal-divider"><span data-hr="novi projekt" data-en="new project">novi projekt</span></div>
+          <div class="form-grid"><label class="field"><span data-hr="Naziv projekta" data-en="Project name">Naziv projekta</span><input id="project-new-name" type="text" maxlength="120" /></label><label class="field"><span>Slug</span><input id="project-new-slug" type="text" maxlength="80" placeholder="novi-projekt" /></label><label class="field"><span data-hr="Glavni jezik" data-en="Primary language">Glavni jezik</span><select id="project-new-locale"><option value="hr">Hrvatski</option><option value="en">English</option></select></label></div>
+          <div class="modal-actions"><button class="primary-button" id="project-create" type="button"><i data-lucide="folder-plus"></i><span data-hr="Kreiraj projekt" data-en="Create project">Kreiraj projekt</span></button></div>
+        </div>
       </div>
     </div>
 

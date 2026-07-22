@@ -1,0 +1,9 @@
+[build]
+  command = "sh scripts/netlify-build.sh"
+  publish = "dist"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://millena-ai.onrender.com/api/:splat"
+  status = 200
+  force = true
