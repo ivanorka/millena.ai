@@ -96,7 +96,10 @@ func (h *SystemHandler) BulkUserStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": gin.H{"updated": result.RowsAffected()}})
 }
 func (h *SystemHandler) Plans(c *gin.Context) {
-	rows, err := h.pool.Query(c, `SELECT code,name,description,price_cents,currency,billing_interval,monthly_publication_limit,is_active FROM plan_catalog ORDER BY price_cents`)
+	rows, err := h.pool.Query(c, `SELECT code,name,description,price_cents,currency,billing_interval,monthly_publication_limit,is_active
+		FROM plan_catalog
+		WHERE code IN ('starter', 'optimum', 'unlimited')
+		ORDER BY CASE code WHEN 'starter' THEN 1 WHEN 'optimum' THEN 2 ELSE 3 END`)
 	if err != nil {
 		writeError(c, 500, "internal_error", "Plans could not be loaded.")
 		return
