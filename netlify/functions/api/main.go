@@ -14,7 +14,6 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 
-	"github.com/ivanorka/millena-ai/internal/auth"
 	"github.com/ivanorka/millena-ai/internal/config"
 	"github.com/ivanorka/millena-ai/internal/database"
 	"github.com/ivanorka/millena-ai/internal/httpapi"
@@ -90,17 +89,6 @@ func initializeAPI(ctx context.Context) error {
 		}
 		pool, err := database.Open(ctx, cfg.DatabaseURL, cfg.DatabaseMaxConnections)
 		if err != nil {
-			apiErr = err
-			return
-		}
-		authRepository := auth.NewRepository(pool)
-		if err := authRepository.EnsureMPRWorkspace(ctx, cfg.DemoAdminEmail, cfg.DemoAdminName, cfg.DemoAdminPassword); err != nil {
-			pool.Close()
-			apiErr = err
-			return
-		}
-		if err := authRepository.EnsureSuperAdmin(ctx, cfg.SuperAdminEmail, cfg.SuperAdminName, cfg.SuperAdminPassword); err != nil {
-			pool.Close()
 			apiErr = err
 			return
 		}
