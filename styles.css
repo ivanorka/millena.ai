@@ -956,6 +956,9 @@ svg {
   background: #fff;
   box-shadow: inset 0 -2px var(--coral);
 }
+.pipeline-stage::after { content: "›"; position: absolute; right: 11px; bottom: 9px; color: var(--subtle); font-size: 1rem; opacity: 0; transform: translateX(-3px); transition: opacity .15s ease, transform .15s ease; }
+.pipeline-stage:hover::after,
+.pipeline-stage:focus-visible::after { opacity: 1; transform: translateX(0); }
 
 .pipeline-label,
 .calendar-legend span {
@@ -969,6 +972,7 @@ svg {
 .pipeline-columns strong {
   font-size: 1.05rem;
 }
+.pipeline-open-hint { margin-top: 2px; color: var(--subtle); font-size: .54rem; font-weight: 650; }
 
 .dot {
   width: 7px;
@@ -1223,6 +1227,16 @@ svg {
 .timeline-list {
   margin-top: 14px;
 }
+
+.timeline-item { width: 100%; min-height: 64px; margin: 0 0 7px; padding: 9px 10px; display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface-2); text-align: left; transition: background .15s ease, box-shadow .15s ease; }
+.timeline-item:hover { background: #fbfaff; box-shadow: inset 3px 0 var(--coral); }
+.timeline-item > strong { align-self: stretch; padding-right: 9px; display: grid; place-items: center start; border-right: 1px solid var(--line); color: var(--coral-dark); font-size: .65rem; font-variant-numeric: tabular-nums; }
+.timeline-copy { min-width: 0; display: grid; gap: 6px; }
+.timeline-copy > strong { overflow: hidden; font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.timeline-meta { display: flex; align-items: center; gap: 6px; }
+.timeline-channel-icon { width: 21px; height: 21px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--blue); background: var(--blue-soft); cursor: help; }
+.timeline-channel-icon svg { width: 11px; height: 11px; }
+.timeline-meta .status-pill { min-height: 20px; font-size: .55rem; }
 
 .timeline-list > div {
   display: grid;
@@ -3598,6 +3612,24 @@ label:has(> #plan-feature-sso) {
 .media-preview-stage { min-height: 240px; display: grid; place-items: center; overflow: hidden; border-radius: 8px; background: #101517; }
 .media-preview-stage img,
 .media-preview-stage video { display: block; max-width: 100%; max-height: min(66vh, 620px); object-fit: contain; }
+.notifications-modal { width: min(650px, calc(100vw - 32px)); }
+.notifications-summary { margin-bottom: 14px; padding: 12px; display: flex; align-items: center; gap: 10px; border: 1px solid #d8e6df; border-radius: 8px; background: linear-gradient(135deg, #f4fbf7, #fff); }
+.notifications-summary > span { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; color: var(--green); background: var(--green-soft); }
+.notifications-summary svg { width: 16px; }
+.notifications-summary > div { display: grid; gap: 3px; }
+.notifications-summary strong { font-size: .72rem; }
+.notifications-summary small { color: var(--muted); font-size: .6rem; }
+.notifications-list { max-height: min(52vh, 470px); overflow: auto; display: grid; gap: 7px; padding-right: 2px; }
+.notification-entry { width: 100%; padding: 10px; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 9px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: #fff; text-align: left; }
+.notification-entry:hover { background: var(--surface-2); border-color: var(--line-strong); }
+.notification-entry > span { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; color: var(--blue); background: var(--blue-soft); }
+.notification-entry.review > span { color: #96530a; background: var(--amber-soft); }
+.notification-entry.failure > span { color: #a74848; background: #fff0f0; }
+.notification-entry > span svg { width: 14px; }
+.notification-entry > div { min-width: 0; display: grid; gap: 3px; }
+.notification-entry strong { overflow: hidden; font-size: .67rem; text-overflow: ellipsis; white-space: nowrap; }
+.notification-entry small { overflow: hidden; color: var(--muted); font-size: .57rem; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.notification-entry time { color: var(--subtle); font-size: .55rem; }
 
 .publish-checks .check-missing {
   color: #a15c20;

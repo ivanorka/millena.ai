@@ -2321,8 +2321,7 @@
       return;
     }
     recent.forEach((item) => {
-      const row = document.createElement("button");
-      row.type = "button";
+      const row = document.createElement("article");
       row.className = "content-row";
       row.dataset.dashboardContentId = item.id;
       const thumb = document.createElement("span");
@@ -2461,7 +2460,10 @@
         caption.append(marker, document.createTextNode(label));
         const count = document.createElement("strong");
         count.textContent = String(dashboardData.pipeline?.[key] || 0);
-        column.append(caption, count);
+        const hint = document.createElement("small");
+        hint.className = "pipeline-open-hint";
+        hint.textContent = currentLanguage === "hr" ? "Otvori stavke" : "Open items";
+        column.append(caption, count, hint);
         pipeline.append(column);
       });
     }
@@ -2477,11 +2479,24 @@
         const time = document.createElement("strong");
         time.textContent = new Intl.DateTimeFormat(currentLanguage === "hr" ? "hr-HR" : "en-GB", { hour: "2-digit", minute: "2-digit" }).format(new Date(item.scheduledFor));
         const copy = document.createElement("span");
-        const title = document.createElement("b");
+        copy.className = "timeline-copy";
+        const title = document.createElement("strong");
         title.textContent = item.title;
-        const detail = document.createElement("small");
-        detail.textContent = `${item.channel} · ${contentStatusLabel(item.status)}`;
-        copy.append(title, detail);
+        const meta = document.createElement("span");
+        meta.className = "timeline-meta";
+        const channel = document.createElement("span");
+        channel.className = "timeline-channel-icon";
+        const channelName = item.channel ? `${item.channel.charAt(0).toUpperCase()}${item.channel.slice(1)}` : "—";
+        channel.title = channelName;
+        channel.setAttribute("aria-label", channelName);
+        const channelIcon = document.createElement("i");
+        channelIcon.dataset.lucide = calendarChannelIcon(item.channel);
+        channel.append(channelIcon);
+        const status = document.createElement("span");
+        status.className = `status-pill ${contentStatusClass(item.status)}`;
+        status.textContent = contentStatusLabel(item.status);
+        meta.append(channel, status);
+        copy.append(title, meta);
         row.append(time, copy);
         today.append(row);
       });
@@ -5139,15 +5154,82 @@
     }
   }
 
+  let notificationEvents = [];
+  let notificationsExpanded = false;
+
+  function notificationPresentation(event) {
+    const action = String(event.action || "");
+    const metadata = event.metadata || {};
+    const labels = {
+      "content.created": ["file-plus-2", currentLanguage === "hr" ? "Sadržaj je kreiran" : "Content created"],
+      "content.updated": ["pencil", currentLanguage === "hr" ? "Sadržaj je ažuriran" : "Content updated"],
+      "content.reviewed": ["badge-check", currentLanguage === "hr" ? "Sadržaj je odobren" : "Content approved"],
+      "content.revision_requested": ["rotate-ccw", currentLanguage === "hr" ? "Zatražena je dorada sadržaja" : "Content revision requested"],
+      "content.deleted": ["trash-2", currentLanguage === "hr" ? "Sadržaj je obrisan" : "Content deleted"],
+    };
+    const [icon, title] = labels[action] || [action.includes("failed") ? "triangle-alert" : "activity", metadata.label || action.replace(/[._]/g, " ")];
+    const detail = metadata.comment || metadata.reviewer || metadata.label || event.entityType || (currentLanguage === "hr" ? "Aktivnost je spremljena u audit zapis." : "Activity was saved to the audit log.");
+    return { icon, title, detail, tone: action.includes("revision") ? "review" : action.includes("failed") ? "failure" : "" };
+  }
+
+  function renderNotifications() {
+    const list = document.querySelector("#notifications-list");
+    if (!list) return;
+    list.replaceChildren();
+    const visible = notificationEvents.slice(0, notificationsExpanded ? notificationEvents.length : 6);
+    if (!visible.length) {
+      const empty = document.createElement("p");
+      empty.className = "content-empty";
+      empty.textContent = currentLanguage === "hr" ? "Još nema aktivnosti projekta." : "There is no project activity yet.";
+      list.append(empty);
+    }
+    visible.forEach((event) => {
+      const presentation = notificationPresentation(event);
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = `notification-entry ${presentation.tone}`;
+      const iconWrap = document.createElement("span");
+      const icon = document.createElement("i");
+      icon.dataset.lucide = presentation.icon;
+      iconWrap.append(icon);
+      const copy = document.createElement("div");
+      const title = document.createElement("strong");
+      title.textContent = presentation.title;
+      const detail = document.createElement("small");
+      detail.textContent = presentation.detail;
+      const time = document.createElement("time");
+      time.textContent = formatDateTime(event.createdAt);
+      copy.append(title, detail, time);
+      row.append(iconWrap, copy);
+      list.append(row);
+    });
+    const more = document.querySelector("#notifications-view-more");
+    if (more) {
+      more.hidden = notificationEvents.length <= 6;
+      more.querySelector("span").textContent = notificationsExpanded
+        ? (currentLanguage === "hr" ? "Prikaži manje" : "Show less")
+        : (currentLanguage === "hr" ? "Prikaži sve" : "View all");
+      more.querySelector("i").dataset.lucide = notificationsExpanded ? "chevrons-up" : "chevrons-down";
+    }
+    refreshIcons();
+  }
+
   async function openNotifications() {
     try {
-      const events = await apiRequest(`/projects/${projectID}/actions`);
-      const copy = events.slice(0, 8).map((event) => `${event.action} · ${formatDateTime(event.createdAt)}`).join("\n") || (currentLanguage === "hr" ? "Još nema audit događaja." : "There are no audit events yet.");
-      openActionModal(`${events.length} ${currentLanguage === "hr" ? "događaja" : "events"}`, copy, currentLanguage === "hr" ? "Aktivnost projekta" : "Project activity");
+      notificationEvents = await apiRequest(`/projects/${projectID}/actions`);
+      notificationsExpanded = false;
+      setText("#notifications-summary-title", `${notificationEvents.length} ${currentLanguage === "hr" ? "zapisa aktivnosti" : "activity records"}`);
+      setText("#notifications-summary-copy", notificationEvents.length
+        ? (currentLanguage === "hr" ? "Najnovije promjene, pregledi i radnje u ovom projektu." : "Latest changes, reviews, and actions in this project.")
+        : (currentLanguage === "hr" ? "Nove radnje prikazat će se ovdje." : "New activity will appear here."));
+      renderNotifications();
+      openDomainModal("notifications-modal");
     } catch (error) {
       showDomainError(currentLanguage === "hr" ? "Obavijesti i audit" : "Notifications and audit", error);
     }
   }
+
+  function closeNotifications() { closeDomainModal("notifications-modal"); }
 
   function openActionModal(label, copy = "", title = "") {
     const modal = document.querySelector("#action-modal");
@@ -5286,7 +5368,7 @@
     document.querySelectorAll(".project-switcher-chevron").forEach((node) => { node.hidden = !hasProjectChoice; });
     const planName = activeEntitlement.planName || activeEntitlement.planCode || "—";
     document.querySelectorAll(".project-switcher .project-progress").forEach((node) => {
-      node.textContent = String(planName).slice(0, 3).toUpperCase();
+      node.textContent = activeEntitlement.planCode === "unlimited" ? "∞" : String(planName).slice(0, 3).toUpperCase();
       node.title = planName;
     });
     document.querySelectorAll(".profile-button .avatar").forEach((node) => { node.textContent = initials; });
@@ -5803,6 +5885,9 @@
     }
   });
   document.querySelector("#notification-button")?.addEventListener("click", openNotifications);
+  document.querySelectorAll("[data-notifications-close]").forEach((button) => button.addEventListener("click", closeNotifications));
+  document.querySelector("#notifications-modal")?.addEventListener("click", (event) => { if (event.target === event.currentTarget) closeNotifications(); });
+  document.querySelector("#notifications-view-more")?.addEventListener("click", () => { notificationsExpanded = !notificationsExpanded; renderNotifications(); });
   document.querySelector("#dashboard-content-list")?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-dashboard-content-id]");
     const item = button && contentItems.find((candidate) => candidate.id === button.dataset.dashboardContentId);
