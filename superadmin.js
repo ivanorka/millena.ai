@@ -1,0 +1,6 @@
+(() => {
+  const apiBase = window.location.port === "8000" ? `${window.location.protocol}//${window.location.hostname}:8080/api/v1` : "/api/v1";
+  async function api(path, options = {}) { const response = await fetch(`${apiBase}${path}`, { ...options, credentials: "include", headers: { Accept: "application/json", ...(options.headers || {}) } }); const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.error?.message || "API request failed"); return payload.data; }
+  async function boot() { try { const session = await api("/auth/me"); if (session?.user?.systemRole !== "super_admin") { window.location.replace("app.html"); return; } document.querySelector("#admin-name").textContent = session.user.displayName; document.querySelector("#admin-email").textContent = session.user.email; document.querySelector("#project-count").textContent = String(session.projects?.length || 0); document.querySelector("#api-status").textContent = "Online"; } catch { window.location.replace("login.html?next=superadmin.html"); } }
+  document.querySelector("#logout")?.addEventListener("click", async () => { try { await api("/auth/logout", { method: "POST" }); } finally { window.location.replace("login.html"); } }); boot();
+})();

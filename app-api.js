@@ -5502,6 +5502,10 @@
     try {
       const session = await apiRequest("/auth/me");
       sessionUser = session.user;
+      if (sessionUser?.systemRole === "super_admin") {
+        window.location.replace("superadmin.html");
+        return;
+      }
       window.__millenaProjectAccess = session.projects || [];
       const preferredProjectID = activeProjectPreference();
       projectAccess = session.projects?.find((access) => access.projectId === preferredProjectID) || session.projects?.[0];

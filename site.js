@@ -327,12 +327,14 @@ loginForm?.addEventListener("submit", async (event) => {
       }
     : { email: String(form.get("email") || ""), password: String(form.get("password") || "") };
   try {
-    await siteAPI(path, { method: "POST", body: JSON.stringify(body) });
+    const session = await siteAPI(path, { method: "POST", body: JSON.stringify(body) });
     showAuthMessage(authMode === "register"
       ? (siteLanguage === "hr" ? "Organizacija je kreirana. Otvaram aplikaciju..." : "Organization created. Opening the app...")
       : (siteLanguage === "hr" ? "Prijava uspješna. Otvaram aplikaciju..." : "Signed in. Opening the app..."), true);
     const requested = new URLSearchParams(window.location.search).get("next") || "app.html";
-    const target = requested.startsWith("app.html") ? requested : "app.html";
+    const target = session?.user?.systemRole === "super_admin"
+      ? "superadmin.html"
+      : (requested.startsWith("app.html") ? requested : "app.html");
     window.location.href = target;
   } catch (error) {
     showAuthMessage(error.message);
