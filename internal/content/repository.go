@@ -15,6 +15,7 @@ import (
 
 var (
 	ErrNotFound                          = errors.New("content record not found")
+	ErrReviewNotPending                  = errors.New("content record is not awaiting review")
 	ErrInvalidAssetReferences            = errors.New("content asset references are invalid")
 	ErrInvalidNewsletterTarget           = errors.New("newsletter target is invalid")
 	ErrNewsletterDeliveryVariantConflict = errors.New("another newsletter variant owns the active delivery")
@@ -178,6 +179,34 @@ func (r *Repository) Update(ctx context.Context, projectID, itemID, userID strin
 		return Item{}, err
 	}
 	return item, nil
+}
+
+func (r *Repository) ApproveReview(ctx context.Context, projectID, itemID, reviewerID, reviewerName string) (Item, error) {
+	item, err := scanItem(r.pool.QueryRow(ctx, `
+		UPDATE content_items
+		SET status = 'approved',
+		    metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
+		      'reviewedBy', $3,
+		      'reviewedByName', $4,
+		      'reviewedAt', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+		    ),
+		    revision = revision + 1,
+		    updated_at = now()
+		WHERE project_id = $1::uuid AND id = $2::uuid AND status = 'in_review'
+		RETURNING id::text, project_id::text, author_id::text, kind, status, title, summary,
+		          body, channels, scheduled_for, source, revision, metadata, created_at, updated_at`,
+		projectID, itemID, reviewerID, reviewerName))
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return item, err
+	}
+	var exists bool
+	if err := r.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM content_items WHERE project_id = $1::uuid AND id = $2::uuid)`, projectID, itemID).Scan(&exists); err != nil {
+		return Item{}, err
+	}
+	if !exists {
+		return Item{}, ErrNotFound
+	}
+	return Item{}, ErrReviewNotPending
 }
 
 func defaultVariantsCanConsume(input SaveInput) bool {

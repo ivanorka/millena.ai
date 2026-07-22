@@ -104,6 +104,27 @@ func (h *Handler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": item})
 }
 
+func (h *Handler) ApproveReview(c *gin.Context) {
+	if !h.databaseAvailable(c) {
+		return
+	}
+	user, _ := auth.CurrentUser(c)
+	item, err := h.repository.ApproveReview(c.Request.Context(), c.Param("projectID"), c.Param("itemID"), user.ID, user.DisplayName)
+	if errors.Is(err, ErrNotFound) {
+		writeContentError(c, http.StatusNotFound, "not_found", "Content entry was not found.")
+		return
+	}
+	if errors.Is(err, ErrReviewNotPending) {
+		writeContentError(c, http.StatusConflict, "review_not_pending", "Only content awaiting review can be approved.")
+		return
+	}
+	if writeContentDatabaseError(c, err, "Content review could not be saved.") {
+		return
+	}
+	_ = h.repository.RecordAudit(c.Request.Context(), c.Param("projectID"), user.ID, "content.reviewed", "content_item", &item.ID, map[string]any{"reviewer": user.DisplayName, "status": item.Status})
+	c.JSON(http.StatusOK, gin.H{"data": item})
+}
+
 func (h *Handler) Delete(c *gin.Context) {
 	if !h.databaseAvailable(c) {
 		return

@@ -65,6 +65,7 @@ func NewRouter(options RouterOptions) *gin.Engine {
 	secured.GET("/projects", projectHandler.List)
 	secured.POST("/projects", projectHandler.Create)
 	secured.GET("/projects/:projectID", allProjectRoles, projectHandler.Get)
+	secured.DELETE("/projects/:projectID", ownerProjectRole, projectHandler.Delete)
 	secured.GET("/projects/:projectID/state", allProjectRoles, projectHandler.GetAppState)
 	secured.PUT("/projects/:projectID/state", writeProjectRoles, projectHandler.SaveAppState)
 
@@ -100,6 +101,7 @@ func NewRouter(options RouterOptions) *gin.Engine {
 	secured.GET("/projects/:projectID/content/items/:itemID", allProjectRoles, contentHandler.Get)
 	secured.POST("/projects/:projectID/content/items", publishProjectRoles, contentHandler.Create)
 	secured.PUT("/projects/:projectID/content/items/:itemID", publishProjectRoles, contentHandler.Update)
+	secured.POST("/projects/:projectID/content/items/:itemID/review", publishProjectRoles, contentHandler.ApproveReview)
 	secured.DELETE("/projects/:projectID/content/items/:itemID", manageProjectRoles, contentHandler.Delete)
 	secured.GET("/projects/:projectID/content/items/:itemID/variants", allProjectRoles, contentHandler.ListVariants)
 	secured.PUT("/projects/:projectID/content/items/:itemID/variants", publishProjectRoles, contentHandler.SaveVariant)
