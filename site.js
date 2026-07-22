@@ -275,11 +275,11 @@ function setAuthMode(mode) {
   document.querySelectorAll("[data-auth-mode]").forEach((button) => button.classList.toggle("active", button.dataset.authMode === authMode));
   const registerFields = document.querySelector("#register-fields");
   if (registerFields) registerFields.hidden = authMode !== "register";
-  registerFields?.querySelectorAll("input").forEach((input) => { input.required = authMode === "register"; });
+  registerFields?.querySelectorAll('input[type="text"], input[type="radio"]').forEach((input) => { input.required = authMode === "register"; });
   const submitLabel = loginForm?.querySelector(".login-submit span");
   if (submitLabel) {
     submitLabel.textContent = authMode === "register"
-      ? (siteLanguage === "hr" ? "Kreiraj Unlimited račun" : "Create Unlimited account")
+      ? (siteLanguage === "hr" ? "Kreiraj račun" : "Create account")
       : (siteLanguage === "hr" ? "Prijavi se" : "Sign in");
   }
   showAuthMessage("");
@@ -321,6 +321,7 @@ loginForm?.addEventListener("submit", async (event) => {
     ? {
         displayName: String(form.get("displayName") || ""),
         organizationName: String(form.get("organizationName") || ""),
+        planCode: String(form.get("planCode") || "starter"),
         email: String(form.get("email") || ""),
         password: String(form.get("password") || ""),
       }
@@ -339,7 +340,7 @@ loginForm?.addEventListener("submit", async (event) => {
     if (submit) submit.disabled = false;
     if (label) {
       label.textContent = authMode === "register"
-        ? (siteLanguage === "hr" ? "Kreiraj Unlimited račun" : "Create Unlimited account")
+        ? (siteLanguage === "hr" ? "Kreiraj račun" : "Create account")
         : (siteLanguage === "hr" ? "Prijavi se" : "Sign in");
     }
   }

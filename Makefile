@@ -34,8 +34,10 @@ db-migrate-up:
 	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000013_remove_unimplemented_sso_feature.up.sql
 	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000014_timezone_aware_seed_anchors.up.sql
 	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000015_starter_ten_publications.up.sql
+	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000016_registration_plan_choices.up.sql
 
 db-migrate-down:
+	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000016_registration_plan_choices.down.sql
 	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000015_starter_ten_publications.down.sql
 	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000014_timezone_aware_seed_anchors.down.sql
 	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000013_remove_unimplemented_sso_feature.down.sql

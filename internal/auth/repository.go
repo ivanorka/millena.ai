@@ -16,6 +16,7 @@ import (
 var ErrNotFound = errors.New("authentication record not found")
 var ErrEmailConflict = errors.New("email already exists")
 var ErrSlugConflict = errors.New("project slug already exists")
+var ErrRegistrationPlan = errors.New("registration plan is unavailable")
 var ErrCurrentPasswordInvalid = errors.New("current password is invalid")
 
 type Repository struct {
@@ -209,7 +210,24 @@ func (r *Repository) Register(ctx context.Context, input RegisterInput) (User, P
 	}
 	access.Role = "owner"
 	access.Permissions = map[string]any{"*": true}
-	access.Entitlement = starterEntitlement()
+	planCatalogCode := registrationPlanCatalogCode(input.PlanCode)
+	err = tx.QueryRow(ctx, `
+		SELECT code, seat_limit, monthly_publication_limit, storage_limit_bytes, features
+		FROM plan_catalog
+		WHERE code = $1 AND is_active AND is_system`, planCatalogCode).Scan(
+		&access.Entitlement.PlanCode,
+		&access.Entitlement.SeatLimit,
+		&access.Entitlement.MonthlyPublicationLimit,
+		&access.Entitlement.StorageLimitBytes,
+		&access.Entitlement.Features,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, ProjectAccess{}, ErrRegistrationPlan
+	}
+	if err != nil {
+		return User{}, ProjectAccess{}, err
+	}
+	access.Entitlement.Status = "active"
 
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO project_members (project_id, user_id, role, permissions, status)
@@ -221,8 +239,10 @@ func (r *Repository) Register(ctx context.Context, input RegisterInput) (User, P
 			project_id, plan_code, status, seat_limit, monthly_publication_limit,
 			storage_limit_bytes, features
 		)
-		VALUES ($1::uuid, 'starter', 'active', 3, $2, 5368709120, $3::jsonb)`,
-		access.ProjectID, starterMonthlyPublicationLimit, starterFeaturesJSON); err != nil {
+		VALUES ($1::uuid, $2, 'active', $3, $4, $5, $6::jsonb)`,
+		access.ProjectID, access.Entitlement.PlanCode, access.Entitlement.SeatLimit,
+		access.Entitlement.MonthlyPublicationLimit, access.Entitlement.StorageLimitBytes,
+		access.Entitlement.Features); err != nil {
 		return User{}, ProjectAccess{}, err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO project_app_states (project_id) VALUES ($1::uuid)`, access.ProjectID); err != nil {
@@ -272,41 +292,15 @@ func seedNewTenantStrategyAndContent(ctx context.Context, tx pgx.Tx, projectID, 
 	return err
 }
 
-const unlimitedFeaturesJSON = `{"aiAgents":true,"analytics":true,"api":true,"auditLog":true,"automations":true,"prioritySupport":true,"socialChannels":"all","whiteLabel":true}`
-
-const (
-	starterMonthlyPublicationLimit = 10
-	starterFeaturesJSON            = `{"aiAgents":true,"analytics":false,"api":false,"auditLog":true,"automations":false,"prioritySupport":false,"socialChannels":3,"whiteLabel":false}`
-)
-
-func starterEntitlement() Entitlement {
-	monthlyLimit := starterMonthlyPublicationLimit
-	seatLimit := 3
-	storageLimitBytes := int64(5368709120)
-	return Entitlement{
-		PlanCode:                "starter",
-		Status:                  "active",
-		SeatLimit:               &seatLimit,
-		MonthlyPublicationLimit: &monthlyLimit,
-		StorageLimitBytes:       &storageLimitBytes,
-		Features: map[string]any{
-			"aiAgents": true, "analytics": false, "api": false, "auditLog": true,
-			"automations": false, "prioritySupport": false, "socialChannels": 3,
-			"whiteLabel": false,
-		},
-	}
+func isRegistrationPlan(planCode string) bool {
+	return planCode == "starter" || planCode == "optimum" || planCode == "enterprise"
 }
 
-func unlimitedEntitlement() Entitlement {
-	return Entitlement{
-		PlanCode: "unlimited",
-		Status:   "active",
-		Features: map[string]any{
-			"aiAgents": true, "analytics": true, "api": true, "auditLog": true,
-			"automations": true, "prioritySupport": true, "socialChannels": "all",
-			"whiteLabel": true,
-		},
+func registrationPlanCatalogCode(planCode string) string {
+	if planCode == "enterprise" {
+		return "unlimited"
 	}
+	return planCode
 }
 
 func (r *Repository) Authenticate(ctx context.Context, email, password string) (User, error) {

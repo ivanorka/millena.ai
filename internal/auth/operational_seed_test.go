@@ -37,16 +37,19 @@ func TestOperationalWorkspaceSeedDefaults(t *testing.T) {
 	}
 }
 
-func TestStarterEntitlementDefaultsToTenMonthlyPublications(t *testing.T) {
-	entitlement := starterEntitlement()
-	if entitlement.PlanCode != "starter" || entitlement.Status != "active" {
-		t.Fatalf("unexpected starter entitlement: %#v", entitlement)
+func TestRegistrationPlansMapToCatalogPlans(t *testing.T) {
+	for planCode, wantCatalogCode := range map[string]string{
+		"starter": "starter", "optimum": "optimum", "enterprise": "unlimited",
+	} {
+		if !isRegistrationPlan(planCode) {
+			t.Errorf("expected %q to be available during registration", planCode)
+		}
+		if got := registrationPlanCatalogCode(planCode); got != wantCatalogCode {
+			t.Errorf("catalog code for %q = %q, want %q", planCode, got, wantCatalogCode)
+		}
 	}
-	if entitlement.MonthlyPublicationLimit == nil || *entitlement.MonthlyPublicationLimit != 10 {
-		t.Fatalf("monthly publication limit = %v, want 10", entitlement.MonthlyPublicationLimit)
-	}
-	if entitlement.Features["analytics"] != false || entitlement.Features["aiAgents"] != true {
-		t.Fatalf("unexpected Starter features: %#v", entitlement.Features)
+	if isRegistrationPlan("unlimited") || isRegistrationPlan("custom") {
+		t.Fatal("unsupported plans must not be selectable during registration")
 	}
 }
 
