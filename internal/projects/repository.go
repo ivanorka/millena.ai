@@ -10,7 +10,11 @@ import (
 	"github.com/ivanorka/millena-ai/internal/auth"
 )
 
-var ErrNotFound = errors.New("project not found")
+var (
+	ErrNotFound         = errors.New("project not found")
+	ErrLastProject      = errors.New("cannot delete last project")
+	ErrProtectedProject = errors.New("cannot delete protected project")
+)
 
 type Repository struct {
 	pool *pgxpool.Pool
@@ -127,6 +131,44 @@ func (r *Repository) Create(ctx context.Context, input CreateProjectInput, owner
 		return Project{}, err
 	}
 	return project, nil
+}
+
+func (r *Repository) Delete(ctx context.Context, projectID, userID string) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var slug string
+	if err := tx.QueryRow(ctx, `SELECT slug FROM projects WHERE id = $1::uuid`, projectID).Scan(&slug); errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	} else if err != nil {
+		return err
+	}
+	if slug == "millena-demo" {
+		return ErrProtectedProject
+	}
+
+	var projectCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT count(*)
+		FROM project_members
+		WHERE user_id = $1::uuid AND status = 'active'`, userID).Scan(&projectCount); err != nil {
+		return err
+	}
+	if projectCount <= 1 {
+		return ErrLastProject
+	}
+
+	command, err := tx.Exec(ctx, `DELETE FROM projects WHERE id = $1::uuid`, projectID)
+	if err != nil {
+		return err
+	}
+	if command.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *Repository) BootstrapDemo(ctx context.Context) (BootstrapResult, error) {

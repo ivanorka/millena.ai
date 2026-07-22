@@ -98,6 +98,31 @@ func (h *Handler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"data": project})
 }
 
+func (h *Handler) Delete(c *gin.Context) {
+	if !h.databaseAvailable(c) {
+		return
+	}
+
+	if err := h.repository.Delete(c.Request.Context(), c.Param("projectID"), auth.UserID(c)); errors.Is(err, ErrLastProject) {
+		writeError(c, http.StatusConflict, "last_project", "Create or join another project before deleting your last project.")
+		return
+	} else if errors.Is(err, ErrProtectedProject) {
+		writeError(c, http.StatusConflict, "protected_project", "The preconfigured MPR Grupa project cannot be deleted.")
+		return
+	} else if errors.Is(err, ErrNotFound) {
+		writeError(c, http.StatusNotFound, "not_found", "Project was not found.")
+		return
+	} else if postgresErrorCode(err) == "22P02" {
+		writeError(c, http.StatusBadRequest, "invalid_id", "Project ID must be a UUID.")
+		return
+	} else if err != nil {
+		writeError(c, http.StatusInternalServerError, "internal_error", "Project could not be deleted.")
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
 func (h *Handler) BootstrapDemo(c *gin.Context) {
 	if !h.databaseAvailable(c) {
 		return

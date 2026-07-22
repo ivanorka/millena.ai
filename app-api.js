@@ -1245,10 +1245,25 @@
     document.querySelector("#calendar-item-status").value = item?.status || "draft";
     document.querySelector("#calendar-item-scheduled").value = localDateTimeValue(item?.scheduledFor || fallback);
     document.querySelector("#calendar-delete").hidden = !item;
+    updateCalendarDetailPreview();
     modal.classList.add("open");
     modal.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
     document.querySelector("#calendar-item-title")?.focus();
+  }
+
+  function updateCalendarDetailPreview() {
+    const channel = document.querySelector("#calendar-item-channel")?.value || "calendar";
+    const status = document.querySelector("#calendar-item-status")?.value || "draft";
+    const title = document.querySelector("#calendar-item-title")?.value.trim() || (currentLanguage === "hr" ? "Nova stavka" : "New item");
+    const selectedChannel = document.querySelector("#calendar-item-channel option:checked")?.textContent || channel;
+    const previewIcon = document.querySelector("#calendar-detail-icon");
+    if (previewIcon) previewIcon.dataset.lucide = calendarChannelIcon(channel);
+    const previewTitle = document.querySelector("#calendar-detail-preview-title");
+    if (previewTitle) previewTitle.textContent = title;
+    const previewMeta = document.querySelector("#calendar-detail-preview-meta");
+    if (previewMeta) previewMeta.textContent = `${selectedChannel} · ${contentStatusLabel(status)}`;
+    refreshIcons();
   }
 
   function closeCalendarModal() {
@@ -1392,6 +1407,13 @@
     return `${currentLanguage === "hr" ? "Izmjena" : "Updated"} · ${formatted}`;
   }
 
+  function contentReviewLabel(item) {
+    const reviewer = item?.metadata?.reviewedByName;
+    if (!reviewer) return "";
+    const reviewedAt = item.metadata?.reviewedAt ? ` · ${formatDateTime(item.metadata.reviewedAt)}` : "";
+    return currentLanguage === "hr" ? `Pregledao/la ${reviewer}${reviewedAt}` : `Reviewed by ${reviewer}${reviewedAt}`;
+  }
+
   function createContentRow(item) {
     const row = document.createElement("button");
     row.type = "button";
@@ -1410,7 +1432,8 @@
     const title = document.createElement("strong");
     title.textContent = item.title;
     const summary = document.createElement("small");
-    summary.textContent = `${item.summary || item.body.slice(0, 100) || (currentLanguage === "hr" ? "Bez sažetka" : "No summary")} · ${contentSourceLabel(item.source)}`;
+    const reviewLabel = contentReviewLabel(item);
+    summary.textContent = [item.summary || item.body.slice(0, 100) || (currentLanguage === "hr" ? "Bez sažetka" : "No summary"), contentSourceLabel(item.source), reviewLabel].filter(Boolean).join(" · ");
     titleCopy.append(title, summary);
     titleWrap.append(thumb, titleCopy);
 
@@ -1483,6 +1506,18 @@
       items.forEach((item) => list.append(createContentRow(item)));
     }
     refreshIcons();
+  }
+
+  function openPipelineStage(status, kind = "all") {
+    contentKind = kind;
+    contentStatus = status;
+    const statusFilter = document.querySelector("#content-status-filter");
+    if (statusFilter) statusFilter.value = status;
+    contentSearch = "";
+    const search = document.querySelector("#content-search");
+    if (search) search.value = "";
+    renderContent();
+    navigateTo("content");
   }
 
   async function loadContent() {
@@ -1653,6 +1688,7 @@
       avatar.className = "persona-avatar";
       avatar.textContent = persona.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
       const copy = document.createElement("span");
+      copy.className = "content-main";
       copy.className = "persona-copy";
       const title = document.createElement("strong");
       title.textContent = persona.name;
@@ -1920,6 +1956,14 @@
     document.querySelector("#content-item-scheduled").value = item?.scheduledFor ? localDateTimeValue(item.scheduledFor) : "";
     document.querySelector("#content-ai-brief").value = "";
     document.querySelector("#content-delete").hidden = !item;
+    const approveReview = document.querySelector("#content-approve-review");
+    if (approveReview) approveReview.hidden = !item || item.status !== "in_review" || !projectRoleAllows("owner", "lead", "editor");
+    const reviewMeta = document.querySelector("#content-review-meta");
+    if (reviewMeta) {
+      const reviewLabel = contentReviewLabel(item);
+      reviewMeta.hidden = !reviewLabel;
+      reviewMeta.textContent = reviewLabel;
+    }
     document.querySelector("#content-modal-title").textContent = item
       ? (currentLanguage === "hr" ? "Uredi sadržaj" : "Edit content")
       : (currentLanguage === "hr" ? "Novi sadržaj" : "New content");
@@ -1984,12 +2028,31 @@
       });
       closeContentModal();
       await loadContent();
+      await loadDashboard();
       showToast("contentSaved");
     } catch (error) {
       console.error("Millena content save failed", error);
       showToast("contentError");
     } finally {
       if (save) save.disabled = false;
+    }
+  }
+
+  async function approveContentReview() {
+    const id = document.querySelector("#content-item-id")?.value;
+    const button = document.querySelector("#content-approve-review");
+    if (!id || !button) return;
+    button.disabled = true;
+    try {
+      await apiRequest(`/projects/${projectID}/content/items/${id}/review`, { method: "POST" });
+      closeContentModal();
+      await Promise.all([loadContent(), loadDashboard()]);
+      showToast("contentSaved");
+    } catch (error) {
+      console.error("Millena content review failed", error);
+      showToast("contentError");
+    } finally {
+      button.disabled = false;
     }
   }
 
@@ -2010,6 +2073,7 @@
       if (id === newsletterContentID) newNewsletter();
       closeContentModal();
       await loadContent();
+      await loadDashboard();
       showToast("contentDeleted");
     } catch (error) {
       console.error("Millena content delete failed", error);
@@ -2160,7 +2224,7 @@
       const title = document.createElement("strong");
       title.textContent = item.title;
       const detail = document.createElement("small");
-      detail.textContent = contentKindLabel(item.kind);
+      detail.textContent = [contentKindLabel(item.kind), contentReviewLabel(item)].filter(Boolean).join(" · ");
       copy.append(title, detail);
       const status = document.createElement("span");
       status.className = `status-pill ${contentStatusClass(item.status)}`;
@@ -2242,13 +2306,19 @@
     if (pipeline) {
       pipeline.replaceChildren();
       const entries = [
-        ["collected", currentLanguage === "hr" ? "Prikupljeno" : "Collected", "new"],
-        ["inProgress", currentLanguage === "hr" ? "U izradi" : "In progress", "working"],
-        ["inReview", currentLanguage === "hr" ? "Za pregled" : "In review", "review"],
-        ["scheduled", currentLanguage === "hr" ? "Zakazano" : "Scheduled", "ready"],
+        ["collected", currentLanguage === "hr" ? "Prikupljeno" : "Collected", "new", "", "source"],
+        ["inProgress", currentLanguage === "hr" ? "U izradi" : "In progress", "working", "draft", "all"],
+        ["inReview", currentLanguage === "hr" ? "Za pregled" : "In review", "review", "in_review", "all"],
+        ["scheduled", currentLanguage === "hr" ? "Zakazano" : "Scheduled", "ready", "scheduled", "all"],
       ];
-      entries.forEach(([key, label, dot]) => {
-        const column = document.createElement("div");
+      entries.forEach(([key, label, dot, status, kind]) => {
+        const column = document.createElement("button");
+        column.type = "button";
+        column.className = "pipeline-stage";
+        column.dataset.pipelineStatus = status;
+        column.dataset.pipelineKind = kind;
+        column.title = currentLanguage === "hr" ? `Prikaži: ${label}` : `Show: ${label}`;
+        column.setAttribute("aria-label", column.title);
         const caption = document.createElement("span");
         caption.className = "pipeline-label";
         const marker = document.createElement("i");
@@ -2293,30 +2363,39 @@
       todaySummary.textContent = `${(dashboardData.today || []).length} ${currentLanguage === "hr" ? "stavki" : "items"} · ${channels.size} ${currentLanguage === "hr" ? "kanala" : "channels"}`;
     }
 
-    const health = document.querySelector("#dashboard-channel-health");
-    if (health) {
-      health.replaceChildren();
+    const channelGrid = document.querySelector("#dashboard-channel-health");
+    if (channelGrid) {
+      channelGrid.replaceChildren();
       (dashboardData.channels || []).forEach((channel) => {
         const card = document.createElement("button");
         card.type = "button";
-        card.className = "channel-card";
+        const providerClass = channel.provider === "x" ? "x-network" : String(channel.provider || "web").replace(/[^a-z0-9-]/gi, "").toLowerCase();
+        const isHealthy = ["connected", "active", "ready", "ok"].includes(String(channel.status || "").toLowerCase());
+        card.className = `channel-card ${isHealthy ? "connected" : ""}`;
         card.dataset.dashboardChannel = channel.provider;
+        const iconWrap = document.createElement("span");
+        iconWrap.className = `channel-card-icon mini-channel ${providerClass}`;
         const icon = document.createElement("i");
         icon.dataset.lucide = calendarChannelIcon(channel.provider);
+        iconWrap.append(icon);
         const copy = document.createElement("span");
+        copy.className = "channel-card-copy";
         const name = document.createElement("strong");
         name.textContent = channel.displayName || channel.provider;
         const detail = document.createElement("small");
         detail.textContent = `${channel.accountHandle || channel.source} · ${channel.status}`;
         copy.append(name, detail);
-        card.append(icon, copy);
-        health.append(card);
+        const healthIndicator = document.createElement("span");
+        healthIndicator.className = isHealthy ? "health-ok" : "health-warn";
+        healthIndicator.title = channel.status || (currentLanguage === "hr" ? "Nepoznat status" : "Unknown status");
+        card.append(iconWrap, copy, healthIndicator);
+        channelGrid.append(card);
       });
       if (!(dashboardData.channels || []).length) {
         const empty = document.createElement("p");
         empty.className = "content-empty";
         empty.textContent = currentLanguage === "hr" ? "Nema povezanih kanala." : "No connected channels.";
-        health.append(empty);
+        channelGrid.append(empty);
       }
     }
     renderDashboardContent();
@@ -4801,6 +4880,8 @@
     if (!list) return;
     list.replaceChildren();
     projects.forEach((project) => {
+      const row = document.createElement("div");
+      row.className = "project-choice-row";
       const button = document.createElement("button");
       button.type = "button";
       button.className = "project-choice";
@@ -4819,7 +4900,20 @@
       const icon = document.createElement("i");
       icon.dataset.lucide = project.id === projectID ? "circle-check" : "chevron-right";
       button.append(avatar, copy, icon);
-      list.append(button);
+      row.append(button);
+      if (projects.length > 1 && project.slug !== "millena-demo" && sessionAccess?.role === "owner") {
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "project-delete";
+        deleteButton.dataset.projectDelete = project.id;
+        deleteButton.title = currentLanguage === "hr" ? "Obriši projekt" : "Delete project";
+        deleteButton.setAttribute("aria-label", deleteButton.title);
+        const deleteIcon = document.createElement("i");
+        deleteIcon.dataset.lucide = "trash-2";
+        deleteButton.append(deleteIcon);
+        row.append(deleteButton);
+      }
+      list.append(row);
     });
     refreshIcons();
   }
@@ -4855,6 +4949,25 @@
     } catch (error) {
       showDomainError(currentLanguage === "hr" ? "Izrada projekta" : "Creating project", error);
       button.disabled = false;
+    }
+  }
+
+  async function deleteProject(project) {
+    const confirmed = window.confirm(currentLanguage === "hr"
+      ? `Obrisati projekt “${project.name}” i sav njegov sadržaj? Ova se radnja ne može poništiti.`
+      : `Delete “${project.name}” and all of its content? This action cannot be undone.`);
+    if (!confirmed) return;
+    try {
+      await apiRequest(`/projects/${project.id}`, { method: "DELETE" });
+      const session = await apiRequest("/auth/me");
+      window.__millenaProjectAccess = session.projects || [];
+      const nextProject = session.projects?.find((access) => access.projectId !== project.id);
+      if (project.id === projectID && nextProject) setActiveProjectPreference(nextProject.projectId);
+      await loadProjectChooser();
+      if (project.id === projectID) window.location.reload();
+      else showToast("deleted");
+    } catch (error) {
+      showDomainError(currentLanguage === "hr" ? "Brisanje projekta" : "Deleting project", error);
     }
   }
 
@@ -5034,6 +5147,8 @@
     const publishedThisMonth = dashboardData?.stats?.publishedThisMonth || 0;
     document.querySelectorAll(".project-switcher .project-avatar").forEach((node) => { node.textContent = projectInitials; });
     document.querySelectorAll(".project-switcher .project-copy strong").forEach((node) => { node.textContent = projectAccess.projectName; });
+    const hasProjectChoice = (window.__millenaProjectAccess || []).length > 1;
+    document.querySelectorAll(".project-switcher-chevron").forEach((node) => { node.hidden = !hasProjectChoice; });
     const planName = activeEntitlement.planName || activeEntitlement.planCode || "—";
     document.querySelectorAll(".project-switcher .project-progress").forEach((node) => {
       node.textContent = String(planName).slice(0, 3).toUpperCase();
@@ -5526,6 +5641,13 @@
   document.querySelectorAll("[data-project-close]").forEach((button) => button.addEventListener("click", () => closeDomainModal("project-modal")));
   document.querySelector("#project-modal")?.addEventListener("click", (event) => { if (event.target === event.currentTarget) closeDomainModal("project-modal"); });
   document.querySelector("#project-list")?.addEventListener("click", (event) => {
+    const deleteButton = event.target.closest("[data-project-delete]");
+    if (deleteButton) {
+      const project = (window.__millenaProjectAccess || []).find((candidate) => candidate.projectId === deleteButton.dataset.projectDelete);
+      const listProject = project && { id: project.projectId, name: project.projectName };
+      if (listProject) deleteProject(listProject);
+      return;
+    }
     const button = event.target.closest("[data-project-select]");
     if (!button || button.dataset.projectSelect === projectID) return;
     setActiveProjectPreference(button.dataset.projectSelect);
@@ -5674,12 +5796,18 @@
     const item = contentItems.find((candidate) => candidate.id === row.dataset.contentItem);
     if (item) openContentModal(item);
   });
+  document.querySelector("#dashboard-pipeline")?.addEventListener("click", (event) => {
+    const stage = event.target.closest("[data-pipeline-status]");
+    if (!stage) return;
+    openPipelineStage(stage.dataset.pipelineStatus || "", stage.dataset.pipelineKind || "all");
+  });
   document.querySelectorAll("[data-content-close]").forEach((button) => button.addEventListener("click", closeContentModal));
   document.querySelector("#content-modal")?.addEventListener("click", (event) => {
     if (event.target === event.currentTarget) closeContentModal();
   });
   document.querySelector("#content-save")?.addEventListener("click", saveContentItem);
   document.querySelector("#content-delete")?.addEventListener("click", deleteContentItem);
+  document.querySelector("#content-approve-review")?.addEventListener("click", approveContentReview);
   document.querySelector("#content-ai-generate")?.addEventListener("click", () => runContentAI("generate"));
   document.querySelector("#content-ai-refine")?.addEventListener("click", () => runContentAI("refine"));
   document.querySelector("#content-item-status")?.addEventListener("change", (event) => {
@@ -5768,6 +5896,9 @@
   });
   document.querySelector("#calendar-save")?.addEventListener("click", saveCalendarItem);
   document.querySelector("#calendar-delete")?.addEventListener("click", deleteCalendarItem);
+  document.querySelector("#calendar-item-title")?.addEventListener("input", updateCalendarDetailPreview);
+  document.querySelector("#calendar-item-channel")?.addEventListener("change", updateCalendarDetailPreview);
+  document.querySelector("#calendar-item-status")?.addEventListener("change", updateCalendarDetailPreview);
   document.querySelectorAll(".language-button").forEach((button) => button.addEventListener("click", () => window.setTimeout(() => {
     renderCalendar();
     renderContent();
