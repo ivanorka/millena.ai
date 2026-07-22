@@ -37,6 +37,19 @@ func TestOperationalWorkspaceSeedDefaults(t *testing.T) {
 	}
 }
 
+func TestStarterEntitlementDefaultsToTenMonthlyPublications(t *testing.T) {
+	entitlement := starterEntitlement()
+	if entitlement.PlanCode != "starter" || entitlement.Status != "active" {
+		t.Fatalf("unexpected starter entitlement: %#v", entitlement)
+	}
+	if entitlement.MonthlyPublicationLimit == nil || *entitlement.MonthlyPublicationLimit != 10 {
+		t.Fatalf("monthly publication limit = %v, want 10", entitlement.MonthlyPublicationLimit)
+	}
+	if entitlement.Features["analytics"] != false || entitlement.Features["aiAgents"] != true {
+		t.Fatalf("unexpected Starter features: %#v", entitlement.Features)
+	}
+}
+
 func TestOperationalSeedRunAnchorsUseProjectWallClock(t *testing.T) {
 	location, err := time.LoadLocation("Europe/Zagreb")
 	if err != nil {

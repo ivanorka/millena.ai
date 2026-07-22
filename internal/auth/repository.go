@@ -209,7 +209,7 @@ func (r *Repository) Register(ctx context.Context, input RegisterInput) (User, P
 	}
 	access.Role = "owner"
 	access.Permissions = map[string]any{"*": true}
-	access.Entitlement = unlimitedEntitlement()
+	access.Entitlement = starterEntitlement()
 
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO project_members (project_id, user_id, role, permissions, status)
@@ -217,8 +217,12 @@ func (r *Repository) Register(ctx context.Context, input RegisterInput) (User, P
 		return User{}, ProjectAccess{}, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO project_entitlements (project_id, plan_code, status, features)
-		VALUES ($1::uuid, 'unlimited', 'active', $2::jsonb)`, access.ProjectID, unlimitedFeaturesJSON); err != nil {
+		INSERT INTO project_entitlements (
+			project_id, plan_code, status, seat_limit, monthly_publication_limit,
+			storage_limit_bytes, features
+		)
+		VALUES ($1::uuid, 'starter', 'active', 3, $2, 5368709120, $3::jsonb)`,
+		access.ProjectID, starterMonthlyPublicationLimit, starterFeaturesJSON); err != nil {
 		return User{}, ProjectAccess{}, err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO project_app_states (project_id) VALUES ($1::uuid)`, access.ProjectID); err != nil {
@@ -269,6 +273,29 @@ func seedNewTenantStrategyAndContent(ctx context.Context, tx pgx.Tx, projectID, 
 }
 
 const unlimitedFeaturesJSON = `{"aiAgents":true,"analytics":true,"api":true,"auditLog":true,"automations":true,"prioritySupport":true,"socialChannels":"all","whiteLabel":true}`
+
+const (
+	starterMonthlyPublicationLimit = 10
+	starterFeaturesJSON            = `{"aiAgents":true,"analytics":false,"api":false,"auditLog":true,"automations":false,"prioritySupport":false,"socialChannels":3,"whiteLabel":false}`
+)
+
+func starterEntitlement() Entitlement {
+	monthlyLimit := starterMonthlyPublicationLimit
+	seatLimit := 3
+	storageLimitBytes := int64(5368709120)
+	return Entitlement{
+		PlanCode:                "starter",
+		Status:                  "active",
+		SeatLimit:               &seatLimit,
+		MonthlyPublicationLimit: &monthlyLimit,
+		StorageLimitBytes:       &storageLimitBytes,
+		Features: map[string]any{
+			"aiAgents": true, "analytics": false, "api": false, "auditLog": true,
+			"automations": false, "prioritySupport": false, "socialChannels": 3,
+			"whiteLabel": false,
+		},
+	}
+}
 
 func unlimitedEntitlement() Entitlement {
 	return Entitlement{
