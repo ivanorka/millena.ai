@@ -12,7 +12,8 @@
     <main class="shell">
       <header class="top"><div><span class="eyebrow">Millena AI · System</span><h1>Super-admin kontrolni centar</h1></div><div class="identity"><strong id="admin-name">Učitavanje…</strong><span id="admin-email"></span><button id="logout" class="logout" type="button">Odjava</button></div></header>
       <section class="grid"><article class="card"><span>Systemska rola</span><strong>Super admin</strong></article><article class="card"><span>Dostupni projekti</span><strong id="project-count">—</strong></article><article class="card"><span>Status API-ja</span><strong id="api-status">—</strong></article></section>
-      <section class="section"><span class="eyebrow">Sistemski izbornik</span><h2>Upravljanje platformom</h2><p>Ovaj prostor je odvojen od klijentskog workspacea i dostupan je isključivo sistemskom administratoru.</p><nav class="menu"><a href="#users">Korisnici</a><a href="#plans">Paketi i cijene</a><a href="#projects">Projekti</a><a href="#audit">Sistemski audit</a></nav><div class="notice">Globalni korisnički CRUD i uređivanje kataloga paketa bit će ovdje povezani s posebnim administracijskim API-jem; klijentski sadržaj i MPR Grupa ostaju odvojeni.</div></section>
+      <section class="section" id="users"><span class="eyebrow">Korisnici</span><h2>Računi platforme</h2><p>Uredi ime, status računa i sistemsku rolu. Promjene se spremaju izravno u bazu.</p><div id="users-list" class="notice">Učitavam korisnike…</div></section>
+      <section class="section" id="plans"><span class="eyebrow">Paketi</span><h2>Katalog paketa i cijena</h2><p>Uredi naziv, cijenu, mjesečni limit objava i dostupnost paketa.</p><div id="plans-list" class="notice">Učitavam pakete…</div></section>
     </main><script src="superadmin.js"></script>
   </body>
 </html>

@@ -52,6 +52,12 @@ func NewRouter(options RouterOptions) *gin.Engine {
 	secured.GET("/auth/me", authHandler.Me)
 	secured.PUT("/auth/account", authHandler.UpdateAccount)
 	secured.POST("/auth/logout", authHandler.Logout)
+	systemAdmin := admin.NewSystemHandler(options.Database)
+	system := secured.Group("/system", auth.RequireSuperAdmin())
+	system.GET("/users", systemAdmin.Users)
+	system.PUT("/users/:userID", systemAdmin.UpdateUser)
+	system.GET("/plans", systemAdmin.Plans)
+	system.PUT("/plans/:code", systemAdmin.UpdatePlan)
 
 	allProjectRoles := authHandler.RequireProjectRoles("owner", "lead", "editor", "contributor", "viewer")
 	writeProjectRoles := authHandler.RequireProjectRoles("owner", "lead", "editor", "contributor")
