@@ -178,6 +178,9 @@ func (h *Handler) CreatePlan(c *gin.Context) {
 		writeError(c, http.StatusUnprocessableEntity, "validation_error", "Plan limits must be positive when provided.")
 		return
 	}
+	// Seats are intentionally unlimited for every company plan. Commercial
+	// tiers are differentiated by publication quota, storage and capabilities.
+	input.SeatLimit = nil
 	if input.Features == nil {
 		input.Features = map[string]any{}
 	}

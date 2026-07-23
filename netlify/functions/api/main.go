@@ -17,12 +17,14 @@ import (
 	"github.com/ivanorka/millena-ai/internal/config"
 	"github.com/ivanorka/millena-ai/internal/database"
 	"github.com/ivanorka/millena-ai/internal/httpapi"
+	"github.com/ivanorka/millena-ai/internal/notification"
 )
 
 var (
-	apiOnce sync.Once
-	api     http.Handler
-	apiErr  error
+	apiOnce     sync.Once
+	api         http.Handler
+	apiErr      error
+	emailWorker *notification.Worker
 )
 
 func handler(ctx context.Context, event events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, error) {
@@ -69,6 +71,9 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (*events.
 
 	recorder := httptest.NewRecorder()
 	api.ServeHTTP(recorder, request)
+	if emailWorker != nil {
+		emailWorker.DeliverPending(ctx, 10)
+	}
 	response := recorder.Result()
 	defer response.Body.Close()
 
@@ -97,6 +102,10 @@ func initializeAPI(ctx context.Context) error {
 			CookieSecure: true, AIProvider: cfg.AIProvider, OllamaBaseURL: cfg.OllamaBaseURL,
 			OllamaModel: cfg.OllamaModel, AITimeout: cfg.AIRequestTimeout,
 		})
+		emailWorker = notification.NewWorker(notification.NewRepository(pool), notification.NewSMTPMailer(notification.SMTPConfig{
+			Host: cfg.SMTPHost, Port: cfg.SMTPPort, Username: cfg.SMTPUsername, Password: cfg.SMTPPassword,
+			From: cfg.EmailFrom, FromName: cfg.EmailFromName, AppURL: cfg.AppBaseURL,
+		}), 0)
 	})
 	if apiErr != nil {
 		log.Printf("api initialization failed: %v", apiErr)

@@ -36,8 +36,20 @@ db-migrate-up:
 	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000015_starter_ten_publications.up.sql
 	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000016_registration_plan_choices.up.sql
 	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000017_super_admin.up.sql
+	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000018_strategy_source_asset.up.sql
+	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000019_email_notifications.up.sql
+	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000020_password_reset_tokens.up.sql
+	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000021_notification_event_preferences.up.sql
+	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000022_organization_tenants.up.sql
+	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000023_tenant_compatibility_triggers.up.sql
 
 db-migrate-down:
+	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000023_tenant_compatibility_triggers.down.sql
+	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000022_organization_tenants.down.sql
+	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000021_notification_event_preferences.down.sql
+	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000020_password_reset_tokens.down.sql
+	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000019_email_notifications.down.sql
+	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000018_strategy_source_asset.down.sql
 	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000017_super_admin.down.sql
 	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000016_registration_plan_choices.down.sql
 	psql "$$DATABASE_URL" -1 -v ON_ERROR_STOP=1 -f migrations/000015_starter_ten_publications.down.sql

@@ -175,6 +175,16 @@ func (r *Repository) GetDashboard(ctx context.Context, projectID string) (Dashbo
 		return Dashboard{}, ErrNotFound
 	}
 	if err := r.pool.QueryRow(ctx, `
+		SELECT count(*)::int
+		FROM publication_consumptions AS consumption
+		JOIN projects AS consumed_project ON consumed_project.id=consumption.project_id
+		JOIN projects AS active_project
+		  ON active_project.id=$1::uuid
+		 AND active_project.organization_id=consumed_project.organization_id
+		WHERE consumption.billing_month=date_trunc('month',now() AT TIME ZONE 'UTC')::date`, projectID).Scan(&dashboard.Stats.PlanUsageThisMonth); err != nil {
+		return Dashboard{}, err
+	}
+	if err := r.pool.QueryRow(ctx, `
 		SELECT COALESCE((
 			SELECT CASE
 			         WHEN entitlement.status IN ('trial', 'active')

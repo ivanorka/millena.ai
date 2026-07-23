@@ -127,6 +127,7 @@ function applySiteLanguage(language) {
     : (siteLanguage === "hr" ? "Millena AI | Lokalni sadržajni workspace" : "Millena AI | Local content workspace");
 
   refreshSiteIcons();
+  loadMarketingPlans();
 }
 
 document.querySelectorAll(".language-button").forEach((button) => {
@@ -242,13 +243,23 @@ document.querySelectorAll(".faq-list article").forEach((item) => {
 
 const loginForm = document.querySelector("#login-form");
 const authMessage = document.querySelector("#auth-message");
+const passwordResetRequestForm = document.querySelector("#password-reset-request-form");
+const passwordResetConfirmForm = document.querySelector("#password-reset-confirm-form");
+const passwordResetRequestMessage = document.querySelector("#password-reset-request-message");
+const passwordResetConfirmMessage = document.querySelector("#password-reset-confirm-message");
 let authMode = "login";
+let stripeCheckoutEnabled = false;
+const requestedRegistrationPlan = new URLSearchParams(window.location.search).get("plan") || "";
+const requestedAuthMode = new URLSearchParams(window.location.search).get("mode") || "";
+const passwordResetToken = new URLSearchParams(window.location.search).get("reset") || "";
 
 const apiBase = window.location.port === "8000"
   ? `${window.location.protocol}//${window.location.hostname}:8080/api/v1`
   : "/api/v1";
 
-async function loadRegistrationPlans() { const box=document.querySelector("#registration-plan-options"); if(!box)return; try { const plans=await siteAPI("/registration-plans"); box.innerHTML=plans.map((p,i)=>`<label class="registration-plan-card"><input type="radio" name="planCode" value="${p.code}" ${i===0?"checked":""}/><span><strong>${p.name}</strong><small>${p.description || (p.monthlyPublicationLimit == null ? "Neograničeno" : `Do ${p.monthlyPublicationLimit} objava mjesečno`)}</small></span></label>`).join(""); } catch {} }
+function formatPlanPrice(plan) { if (!Number.isFinite(Number(plan?.priceCents)) || Number(plan.priceCents) <= 0) return siteLanguage === "hr" ? "Po dogovoru" : "On request"; return new Intl.NumberFormat(siteLanguage === "hr" ? "hr-HR" : "en-GB", { style: "currency", currency: plan.currency || "EUR" }).format(Number(plan.priceCents) / 100) + (siteLanguage === "hr" ? " / mj." : " / mo."); }
+async function loadRegistrationPlans() { const box=document.querySelector("#registration-plan-options"); if(!box)return; try { const plans=await siteAPI("/registration-plans"); const selected=plans.some(p=>p.code===requestedRegistrationPlan)?requestedRegistrationPlan:plans[0]?.code; box.innerHTML=plans.map((p)=>`<label class="registration-plan-card"><input type="radio" name="planCode" value="${p.code}" ${p.code===selected?"checked":""}/><span><strong>${p.name}</strong><small>${p.description || (p.monthlyPublicationLimit == null ? "Neograničeno" : `Do ${p.monthlyPublicationLimit} objava mjesečno`)}</small><em>${formatPlanPrice(p)}</em></span></label>`).join(""); } catch {} }
+async function loadBillingStatus() { try { const status=await siteAPI("/billing/status"); stripeCheckoutEnabled=Boolean(status?.checkoutEnabled); } catch { stripeCheckoutEnabled=false; } updateAuthSubmitLabel(); }
 
 async function siteAPI(path, options = {}) {
   const response = await fetch(`${apiBase}${path}`, {
@@ -265,6 +276,21 @@ async function siteAPI(path, options = {}) {
   return payload.data;
 }
 
+async function loadMarketingPlans() {
+  const grid = document.querySelector("#marketing-plan-grid");
+  if (!grid) return;
+  try {
+    const plans = await siteAPI("/registration-plans");
+    grid.innerHTML = plans.map((plan) => {
+      const featured = plan.code === "optimum";
+      const icon = plan.code === "enterprise" ? "crown" : featured ? "sparkles" : "sprout";
+      const action = siteLanguage === "hr" ? `Odaberi ${plan.name}` : `Choose ${plan.name}`;
+      return `<article class="marketing-plan-card ${featured ? "featured" : ""}">${featured ? `<span class="marketing-plan-badge">${siteLanguage === "hr" ? "NAJPOPULARNIJE" : "MOST POPULAR"}</span>` : ""}<div><span class="marketing-plan-icon ${featured ? "violet" : plan.code === "enterprise" ? "dark" : ""}"><i data-lucide="${icon}"></i></span><h3>${plan.name}</h3><p>${plan.description || ""}</p></div><div><strong>${formatPlanPrice(plan)}</strong><a class="site-button dark full" href="login.html?mode=register&amp;plan=${encodeURIComponent(plan.code)}"><span>${action}</span><i data-lucide="arrow-right"></i></a></div></article>`;
+    }).join("");
+    refreshSiteIcons();
+  } catch { /* Static plan cards remain available when the API is offline. */ }
+}
+
 function showAuthMessage(message, success = false) {
   if (!authMessage) return;
   authMessage.textContent = message;
@@ -272,20 +298,38 @@ function showAuthMessage(message, success = false) {
   authMessage.classList.toggle("success", success);
 }
 
+function showFormMessage(element, message, success = false) {
+  if (!element) return;
+  element.textContent = message;
+  element.hidden = !message;
+  element.classList.toggle("success", success);
+}
+
+function showPasswordReset(mode = "") {
+  const resetVisible = mode === "request" || mode === "confirm";
+  loginForm && (loginForm.hidden = resetVisible);
+  passwordResetRequestForm && (passwordResetRequestForm.hidden = mode !== "request");
+  passwordResetConfirmForm && (passwordResetConfirmForm.hidden = mode !== "confirm");
+  document.querySelector(".auth-mode-switch")?.toggleAttribute("hidden", resetVisible);
+  showAuthMessage("");
+  showFormMessage(passwordResetRequestMessage, "");
+  showFormMessage(passwordResetConfirmMessage, "");
+  if (mode === "request") passwordResetRequestForm?.querySelector("input")?.focus();
+  if (mode === "confirm") passwordResetConfirmForm?.querySelector("input")?.focus();
+}
+
 function setAuthMode(mode) {
+  showPasswordReset("");
   authMode = mode === "register" ? "register" : "login";
   document.querySelectorAll("[data-auth-mode]").forEach((button) => button.classList.toggle("active", button.dataset.authMode === authMode));
   const registerFields = document.querySelector("#register-fields");
   if (registerFields) registerFields.hidden = authMode !== "register";
   registerFields?.querySelectorAll('input[type="text"], input[type="radio"]').forEach((input) => { input.required = authMode === "register"; });
-  const submitLabel = loginForm?.querySelector(".login-submit span");
-  if (submitLabel) {
-    submitLabel.textContent = authMode === "register"
-      ? (siteLanguage === "hr" ? "Kreiraj račun" : "Create account")
-      : (siteLanguage === "hr" ? "Prijavi se" : "Sign in");
-  }
+  updateAuthSubmitLabel();
   showAuthMessage("");
 }
+
+function updateAuthSubmitLabel() { const label=loginForm?.querySelector(".login-submit span"); if(!label)return; label.textContent=authMode==="register"?(stripeCheckoutEnabled?(siteLanguage==="hr"?"Nastavi na sigurno plaćanje":"Continue to secure payment"):(siteLanguage==="hr"?"Kreiraj račun":"Create account")):(siteLanguage==="hr"?"Prijavi se":"Sign in"); }
 
 async function enterApp(target = "app.html") {
   try {
@@ -329,6 +373,11 @@ loginForm?.addEventListener("submit", async (event) => {
       }
     : { email: String(form.get("email") || ""), password: String(form.get("password") || "") };
   try {
+    if (authMode === "register" && stripeCheckoutEnabled) {
+      const checkout = await siteAPI("/billing/checkout-session", { method: "POST", body: JSON.stringify({ planCode: body.planCode }) });
+      window.location.assign(checkout.url);
+      return;
+    }
     const session = await siteAPI(path, { method: "POST", body: JSON.stringify(body) });
     showAuthMessage(authMode === "register"
       ? (siteLanguage === "hr" ? "Organizacija je kreirana. Otvaram aplikaciju..." : "Organization created. Opening the app...")
@@ -344,10 +393,45 @@ loginForm?.addEventListener("submit", async (event) => {
     if (submit) submit.disabled = false;
     if (label) {
       label.textContent = authMode === "register"
-        ? (siteLanguage === "hr" ? "Kreiraj račun" : "Create account")
+        ? (stripeCheckoutEnabled ? (siteLanguage === "hr" ? "Nastavi na sigurno plaćanje" : "Continue to secure payment") : (siteLanguage === "hr" ? "Kreiraj račun" : "Create account"))
         : (siteLanguage === "hr" ? "Prijavi se" : "Sign in");
     }
   }
+});
+
+passwordResetRequestForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const submit = passwordResetRequestForm.querySelector(".login-submit");
+  if (submit) submit.disabled = true;
+  showFormMessage(passwordResetRequestMessage, "");
+  const email = String(new FormData(passwordResetRequestForm).get("resetEmail") || "").trim();
+  try {
+    await siteAPI("/auth/password-reset", { method: "POST", body: JSON.stringify({ email }) });
+    showFormMessage(passwordResetRequestMessage, siteLanguage === "hr" ? "Ako postoji aktivan račun s tom adresom, poslan je link za novu lozinku. Provjerite i spam mapu." : "If an active account exists for that address, a password-reset link has been sent. Please also check spam.", true);
+  } catch {
+    showFormMessage(passwordResetRequestMessage, siteLanguage === "hr" ? "Zahtjev trenutno nije moguće poslati. Pokušajte ponovno." : "The request could not be sent right now. Please try again.");
+  } finally { if (submit) submit.disabled = false; }
+});
+
+passwordResetConfirmForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const submit = passwordResetConfirmForm.querySelector(".login-submit");
+  if (submit) submit.disabled = true;
+  showFormMessage(passwordResetConfirmMessage, "");
+  const form = new FormData(passwordResetConfirmForm);
+  const password = String(form.get("newPassword") || "");
+  if (password !== String(form.get("confirmPassword") || "")) {
+    showFormMessage(passwordResetConfirmMessage, siteLanguage === "hr" ? "Lozinke se ne podudaraju." : "Passwords do not match.");
+    if (submit) submit.disabled = false;
+    return;
+  }
+  try {
+    await siteAPI("/auth/password-reset/confirm", { method: "POST", body: JSON.stringify({ token: passwordResetToken, password }) });
+    showFormMessage(passwordResetConfirmMessage, siteLanguage === "hr" ? "Nova lozinka je spremljena. Preusmjeravam vas na prijavu…" : "Your new password has been saved. Redirecting you to sign in…", true);
+    window.setTimeout(() => window.location.assign("login.html"), 1200);
+  } catch (error) {
+    showFormMessage(passwordResetConfirmMessage, error.message || (siteLanguage === "hr" ? "Link više nije valjan." : "This link is no longer valid."));
+  } finally { if (submit) submit.disabled = false; }
 });
 
 document.querySelectorAll("[data-enter-app]").forEach((button) => {
@@ -358,13 +442,15 @@ document.querySelectorAll("[data-enter-app]").forEach((button) => {
 });
 
 document.querySelectorAll("[data-auth-mode]").forEach((button) => button.addEventListener("click", () => setAuthMode(button.dataset.authMode)));
+document.querySelector("#forgot-password")?.addEventListener("click", () => showPasswordReset("request"));
+document.querySelectorAll("[data-return-to-login]").forEach((button) => button.addEventListener("click", () => setAuthMode("login")));
 document.querySelector("[data-register-toggle]")?.addEventListener("click", (event) => {
   event.preventDefault();
   setAuthMode("register");
   document.querySelector('#register-fields input')?.focus();
 });
-document.querySelector(".password-toggle")?.addEventListener("click", (event) => {
-  const input = document.querySelector('input[name="password"]');
+document.querySelectorAll(".password-toggle").forEach((toggle) => toggle.addEventListener("click", (event) => {
+  const input = event.currentTarget.closest(".password-field")?.querySelector("input");
   if (!input) return;
   const showPassword = input.type === "password";
   input.type = showPassword ? "text" : "password";
@@ -374,10 +460,12 @@ document.querySelector(".password-toggle")?.addEventListener("click", (event) =>
   const icon = event.currentTarget.querySelector("svg");
   if (icon) icon.setAttribute("data-lucide", showPassword ? "eye-off" : "eye");
   refreshSiteIcons();
-});
+}));
 
 applyHonestSiteCopy();
 applySiteLanguage("hr");
-setAuthMode("login");
+setAuthMode(requestedAuthMode === "register" ? "register" : "login");
+if (passwordResetToken) showPasswordReset("confirm");
 loadRegistrationPlans();
+loadBillingStatus();
 refreshSiteIcons();

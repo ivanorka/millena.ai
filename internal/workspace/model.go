@@ -75,6 +75,7 @@ type Dashboard struct {
 
 type DashboardStats struct {
 	PublishedThisMonth  int64 `json:"publishedThisMonth"`
+	PlanUsageThisMonth  int64 `json:"planUsageThisMonth"`
 	ScheduledNext14Days int64 `json:"scheduledNext14Days"`
 	WaitingReview       int64 `json:"waitingReview"`
 	NewsletterAudience  int64 `json:"newsletterAudience"`

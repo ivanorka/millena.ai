@@ -311,6 +311,27 @@ func (r *Repository) ListPosts(ctx context.Context, projectID string) ([]Post, e
 	return posts, nil
 }
 
+// RecordPostNotification keeps the transactional publication data independent
+// from the notification outbox. An audit event is enough for the database
+// trigger to fan out a delivery to the relevant project members.
+func (r *Repository) RecordPostNotification(ctx context.Context, projectID, userID string, post Post) error {
+	if post.Status != "published" && post.Status != "scheduled" {
+		return nil
+	}
+	action := "social_post.scheduled"
+	summary := "Objava je zakazana za odabrane kanale."
+	if post.Status == "published" {
+		action = "publication_job.succeeded"
+		summary = "Objava je odmah uspješno poslana na odabrane kanale."
+	}
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO audit_events (project_id, actor_id, action, entity_type, entity_id, metadata)
+		VALUES ($1::uuid, NULLIF($2, '')::uuid, $3, 'social_post', $4::uuid,
+		        jsonb_build_object('summary', $5::text, 'status', $6::text))`,
+		projectID, userID, action, post.ID, summary, post.Status)
+	return err
+}
+
 func (r *Repository) PublishDueSandbox(ctx context.Context, limit int) (int64, error) {
 	if limit < 1 {
 		return 0, nil
@@ -322,7 +343,7 @@ func (r *Repository) PublishDueSandbox(ctx context.Context, limit int) (int64, e
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	rows, err := tx.Query(ctx, `
-		SELECT post.id::text
+	SELECT post.id::text, post.project_id::text
 		FROM social_posts AS post
 		JOIN projects AS project
 		  ON project.id = post.project_id AND project.status = 'active'
@@ -337,13 +358,15 @@ func (r *Repository) PublishDueSandbox(ctx context.Context, limit int) (int64, e
 		return 0, err
 	}
 	postIDs := make([]string, 0, limit)
+	projectIDs := make(map[string]string, limit)
 	for rows.Next() {
-		var postID string
-		if err := rows.Scan(&postID); err != nil {
+		var postID, projectID string
+		if err := rows.Scan(&postID, &projectID); err != nil {
 			rows.Close()
 			return 0, err
 		}
 		postIDs = append(postIDs, postID)
+		projectIDs[postID] = projectID
 	}
 	if err := rows.Err(); err != nil {
 		rows.Close()
@@ -370,6 +393,15 @@ func (r *Repository) PublishDueSandbox(ctx context.Context, limit int) (int64, e
 		WHERE id::text = ANY($1::text[]) AND status = 'scheduled'`, postIDs)
 	if err != nil {
 		return 0, err
+	}
+	for _, postID := range postIDs {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO audit_events (project_id, actor_id, action, entity_type, entity_id, metadata)
+			VALUES ($1::uuid, NULL, 'publication_job.succeeded', 'social_post', $2::uuid,
+			        jsonb_build_object('summary', 'Zakazana objava uspješno je poslana na odabrane kanale.', 'status', 'published'))`,
+			projectIDs[postID], postID); err != nil {
+			return 0, err
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return 0, err

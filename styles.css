@@ -1779,6 +1779,8 @@ svg {
 .strategy-file-status > span { min-width: 0; display: grid; gap: 3px; }
 .strategy-file-status strong { overflow: hidden; font-size: 0.7rem; text-overflow: ellipsis; white-space: nowrap; }
 .strategy-file-status small { color: var(--muted); font-size: 0.61rem; }
+.strategy-source-link { justify-self: start; padding: 3px 0; font-size: .66rem; }
+.strategy-source-link svg { width: 15px; }
 
 .strategy-questions {
   margin-top: 20px;
@@ -2028,6 +2030,7 @@ svg {
 
 .switch input:checked + span { background: var(--green); }
 .switch input:checked + span::after { transform: translateX(16px); }
+.switch input:disabled + span { opacity: .48; cursor: not-allowed; }
 .switch.large { width: 46px; height: 26px; flex-basis: 46px; }
 .switch.large span::after { width: 20px; height: 20px; }
 .switch.large input:checked + span::after { transform: translateX(20px); }
@@ -2067,7 +2070,7 @@ svg {
 
 .setup-actions > span strong { font-size: 0.69rem; }
 .setup-actions > span small { color: var(--subtle); font-size: 0.61rem; }
-.strategy-save-row { margin-top: 18px; padding-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); }
+.strategy-save-row { margin-top: 18px; padding-top: 16px; display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--line); }
 .strategy-save-row > span { display: inline-flex; align-items: center; gap: 7px; color: var(--green); font-size: .63rem; font-weight: 700; }
 .strategy-save-row > span svg { width: 15px; }
 
@@ -2941,6 +2944,27 @@ svg {
 /* Settings */
 .settings-grid { width: min(1000px,100%); margin: 0 auto; display: grid; gap: 14px; }
 .settings-section { padding: 22px; }
+.notification-settings-section { display: grid; gap: 18px; }
+.notification-settings-head { margin: 0; }
+.notification-master-toggle { min-width: 190px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--muted); font-size: .64rem; font-weight: 750; }
+.notification-preference-list { display: grid; gap: 14px; }
+.notification-preference-group { overflow: hidden; border: 1px solid var(--line); border-radius: 8px; }
+.notification-preference-group > header { padding: 10px 13px; display: flex; align-items: center; gap: 8px; color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--line); }
+.notification-preference-group > header svg { width: 15px; color: var(--coral); }
+.notification-preference-group > header strong { font-size: .65rem; text-transform: uppercase; letter-spacing: .05em; }
+.notification-preference-row { min-height: 66px; padding: 11px 13px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; border-bottom: 1px solid var(--line); }
+.notification-preference-row:last-child { border-bottom: 0; }
+.notification-preference-row > div { display: grid; gap: 4px; }
+.notification-preference-row strong { font-size: .7rem; }
+.notification-preference-row small { color: var(--muted); font-size: .61rem; line-height: 1.45; }
+.notification-preference-row.is-locked { background: #fbfafc; }
+.notification-preference-row.is-disabled { opacity: .6; }
+.notification-locked-badge { min-height: 25px; padding: 0 8px; display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; color: #5c4773; background: #f0ebf7; font-size: .56rem; font-weight: 800; }
+.notification-locked-badge svg { width: 12px; }
+.notification-settings-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.notification-settings-footer p { margin: 0; color: var(--muted); font-size: .62rem; }
+.notification-settings-footer p.success { color: var(--green); }
+.notification-settings-footer p.error { color: #a53625; }
 .strategy-summary { margin: 20px 0; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); border: 1px solid var(--line); border-radius: 7px; }
 .strategy-summary > div { min-height: 90px; padding: 14px; display: grid; align-content: center; gap: 8px; border-right: 1px solid var(--line); }
 .strategy-summary > div:last-child { border-right: 0; }
@@ -2954,6 +2978,24 @@ svg {
 .team-list small { color: var(--subtle); font-size: .61rem; }
 .team-list button { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); background: transparent; }
 .team-list svg { width: 15px; }
+.settings-kicker { display: block; margin-bottom: 4px; color: var(--coral); font-size: .56rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.organization-users-section { display: grid; gap: 16px; border-top: 3px solid #7f55d9; }
+.organization-summary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+.organization-summary > span { min-height: 76px; padding: 12px; display: grid; grid-template-columns: 22px minmax(0,1fr); grid-template-rows: auto auto; align-items: center; column-gap: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.organization-summary svg { grid-row: 1 / 3; width: 18px; color: #7145c5; }
+.organization-summary strong { font-size: .9rem; }
+.organization-summary small { color: var(--muted); font-size: .57rem; line-height: 1.35; }
+.organization-member-list { display: grid; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.organization-member-row { min-height: 68px; padding: 10px 12px; display: grid; grid-template-columns: 34px minmax(0,1fr) minmax(95px,auto) minmax(110px,auto) 28px; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
+.organization-member-row:last-child { border-bottom: 0; }
+.organization-member-row > span:nth-child(2) { display: grid; gap: 2px; }
+.organization-member-row strong { font-size: .69rem; }
+.organization-member-row small { color: var(--muted); font-size: .58rem; }
+.organization-member-row .organization-role { color: #6542a6; font-size: .58rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.organization-member-row .organization-projects { color: var(--muted); font-size: .58rem; text-align: right; }
+.organization-member-row > button { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--muted); background: var(--surface-2); }
+.organization-member-row > button svg { width: 14px; }
+.organization-member-row.is-suspended { opacity: .62; background: #fbfafc; }
 .panel-head #permissions-manage { margin-right: 7px; }
 .team-admin-actions { margin-top: 16px; padding: 11px; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 9px; border: 1px solid #d9e6e0; border-radius: 7px; background: #f7fcf9; }
 .team-admin-actions > svg { width: 17px; color: var(--green); }
@@ -3123,6 +3165,45 @@ svg {
 .project-delete:hover { background: #ffebe7; }
 .modal-wide .security-note { margin-top: 16px; }
 .modal-wide textarea { resize: vertical; }
+.strategy-source-meta { margin: 0 0 16px; color: var(--muted); font-size: .68rem; }
+.strategy-source-hint { margin: 12px 0 0; display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: .65rem; line-height: 1.45; }
+.strategy-source-hint svg { flex: 0 0 auto; width: 15px; color: var(--coral-dark); }
+
+/* The extracted strategy can be very long. Keep its actions inside the viewport
+   and let the textarea provide the scrollable reading surface. */
+#strategy-source-modal { align-items: center; padding: 12px; }
+#strategy-source-modal .modal {
+  width: min(920px, 100%);
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  overflow: hidden;
+}
+#strategy-source-modal .modal-head { margin: 0; padding: 22px 22px 12px; }
+#strategy-source-modal .strategy-source-meta { margin: 0; padding: 0 22px 12px; }
+#strategy-source-modal .field {
+  min-height: 0;
+  padding: 0 22px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+}
+#strategy-source-modal #strategy-source-text {
+  width: 100%;
+  min-height: 0;
+  height: clamp(230px, 42dvh, 480px);
+  max-height: 480px;
+  resize: none;
+}
+#strategy-source-modal .strategy-source-hint { margin: 0; padding: 12px 22px; }
+#strategy-source-modal .modal-actions {
+  margin: 0;
+  padding: 14px 22px 22px;
+  border-top: 1px solid var(--line);
+  background: #fff;
+}
+#strategy-source-modal .modal-actions.split > span { justify-content: flex-end; }
 
 .toast {
   position: fixed;
@@ -3261,8 +3342,7 @@ svg {
   .setup-panel { min-height: 0; padding: 22px 18px 18px; }
   .setup-card { min-height: 0; }
   .setup-actions > span small { display:none; }
-  .strategy-save-row { align-items: stretch; flex-direction: column; }
-  .strategy-save-row .primary-button { width: 100%; }
+  .strategy-save-row { align-items: stretch; }
   .strategy-dropzone { grid-template-columns: 40px minmax(0, 1fr); padding: 16px; }
   .strategy-upload-icon { width: 40px; height: 40px; }
   .strategy-dropzone .secondary-button { grid-column: 1 / -1; width: 100%; }
@@ -3316,6 +3396,14 @@ svg {
 }
 
 @media (max-width: 560px) {
+  #strategy-source-modal { padding: 8px; }
+  #strategy-source-modal .modal { max-height: calc(100dvh - 16px); }
+  #strategy-source-modal .modal-head { padding: 18px 18px 10px; }
+  #strategy-source-modal .strategy-source-meta,
+  #strategy-source-modal .field,
+  #strategy-source-modal .strategy-source-hint,
+  #strategy-source-modal .modal-actions { padding-left: 18px; padding-right: 18px; }
+  #strategy-source-modal #strategy-source-text { height: clamp(220px, 36dvh, 360px); }
   .page-heading { flex-direction:column; }
   .page-heading > .primary-button { width:100%; }
   .stats-grid { grid-template-columns:1fr; }
@@ -3662,6 +3750,14 @@ label:has(> #plan-feature-sso) {
   .feature-choice-grid {
     grid-template-columns: 1fr;
   }
+  .notification-settings-head,
+  .notification-settings-footer { align-items: stretch; flex-direction: column; }
+  .notification-master-toggle { width: 100%; }
+  .notification-settings-footer .primary-button { width: 100%; justify-content: center; }
+  .organization-summary { grid-template-columns: 1fr; }
+  .organization-member-row { grid-template-columns: 34px minmax(0,1fr) 28px; }
+  .organization-member-row .organization-role,
+  .organization-member-row .organization-projects { grid-column: 2; text-align: left; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -95,6 +95,7 @@ type Strategy struct {
 	Tone             string           `json:"tone"`
 	SourceFilename   *string          `json:"sourceFilename"`
 	SourceMIMEType   *string          `json:"sourceMimeType"`
+	SourceAssetID    *string          `json:"sourceAssetId"`
 	SourceText       string           `json:"sourceText,omitempty"`
 	Revision         int              `json:"revision"`
 	UpdatedBy        *string          `json:"updatedBy"`
@@ -125,6 +126,9 @@ type StrategyInput struct {
 	ForbiddenTopics string   `json:"forbiddenTopics"`
 	SuccessMetrics  string   `json:"successMetrics"`
 	Tone            string   `json:"tone"`
+	// SourceText is optional so ordinary strategy-field saves never overwrite
+	// text extracted from an uploaded document.
+	SourceText *string `json:"sourceText,omitempty"`
 }
 
 type AIInput struct {

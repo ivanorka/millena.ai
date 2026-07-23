@@ -29,6 +29,14 @@ type Config struct {
 	OllamaBaseURL          string
 	OllamaModel            string
 	AIRequestTimeout       time.Duration
+	StripeSecretKey        string
+	AppBaseURL             string
+	SMTPHost               string
+	SMTPPort               int
+	SMTPUsername           string
+	SMTPPassword           string
+	EmailFrom              string
+	EmailFromName          string
 }
 
 func Load() (Config, error) {
@@ -71,8 +79,8 @@ func Load() (Config, error) {
 		DatabaseMaxConnections: int32(maxConnections),
 		ShutdownTimeout:        shutdownTimeout,
 		SessionTTL:             sessionTTL,
-		DemoAdminEmail:         strings.ToLower(envOrDefault("DEMO_ADMIN_EMAIL", "irena@mpr.hr")),
-		DemoAdminName:          envOrDefault("DEMO_ADMIN_NAME", "Irena"),
+		DemoAdminEmail:         strings.ToLower(envOrDefault("DEMO_ADMIN_EMAIL", "ivan@orka.hr")),
+		DemoAdminName:          envOrDefault("DEMO_ADMIN_NAME", "Ivan"),
 		DemoAdminPassword:      demoPassword,
 		SuperAdminEmail:        strings.ToLower(strings.TrimSpace(os.Getenv("SUPER_ADMIN_EMAIL"))),
 		SuperAdminName:         strings.TrimSpace(os.Getenv("SUPER_ADMIN_NAME")),
@@ -81,6 +89,16 @@ func Load() (Config, error) {
 		OllamaBaseURL:          envOrDefault("OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
 		OllamaModel:            ollamaModel,
 		AIRequestTimeout:       aiRequestTimeout,
+		// StripeSecretKey deliberately has no fallback. A checkout can only be
+		// created after a test or live secret key is explicitly configured.
+		StripeSecretKey: strings.TrimSpace(os.Getenv("STRIPE_SECRET_KEY")),
+		AppBaseURL:      strings.TrimRight(envOrDefault("APP_BASE_URL", "http://127.0.0.1:8080"), "/"),
+		SMTPHost:        strings.TrimSpace(os.Getenv("SMTP_HOST")),
+		SMTPPort:        int(envIntOrDefault("SMTP_PORT", 587)),
+		SMTPUsername:    strings.TrimSpace(os.Getenv("SMTP_USERNAME")),
+		SMTPPassword:    os.Getenv("SMTP_PASSWORD"),
+		EmailFrom:       strings.TrimSpace(os.Getenv("EMAIL_FROM")),
+		EmailFromName:   envOrDefault("EMAIL_FROM_NAME", "Millena AI"),
 	}, nil
 }
 
@@ -104,4 +122,16 @@ func splitCSV(value string) []string {
 		}
 	}
 	return result
+}
+
+func envIntOrDefault(key string, fallback int64) int64 {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseInt(value, 10, 32)
+	if err != nil || parsed < 1 || parsed > 65535 {
+		return fallback
+	}
+	return parsed
 }

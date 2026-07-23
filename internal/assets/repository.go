@@ -480,9 +480,11 @@ func requireStorageCapacity(ctx context.Context, tx pgx.Tx, projectID string, ad
 	var status string
 	err := tx.QueryRow(ctx, `
 		SELECT entitlement.storage_limit_bytes, entitlement.status
-		FROM project_entitlements AS entitlement
-		WHERE entitlement.project_id = $1::uuid
-		FOR UPDATE`, projectID).Scan(&limit, &status)
+		FROM projects AS project
+		JOIN organization_entitlements AS entitlement
+		  ON entitlement.organization_id=project.organization_id
+		WHERE project.id=$1::uuid
+		FOR UPDATE OF entitlement`, projectID).Scan(&limit, &status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrEntitlementInactive
 	}
@@ -497,9 +499,12 @@ func requireStorageCapacity(ctx context.Context, tx pgx.Tx, projectID string, ad
 	// uploads cannot both spend the same final bytes of a limited plan.
 	var used int64
 	if err := tx.QueryRow(ctx, `
-		SELECT COALESCE(sum(size_bytes), 0)
-		FROM project_assets
-		WHERE project_id = $1::uuid`, projectID).Scan(&used); err != nil {
+		SELECT COALESCE(sum(asset.size_bytes),0)
+		FROM project_assets AS asset
+		JOIN projects AS stored_project ON stored_project.id=asset.project_id
+		JOIN projects AS active_project
+		  ON active_project.id=$1::uuid
+		 AND active_project.organization_id=stored_project.organization_id`, projectID).Scan(&used); err != nil {
 		return err
 	}
 	if limit != nil && used+addedBytes > *limit {

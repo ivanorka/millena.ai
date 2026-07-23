@@ -18,6 +18,7 @@ var ErrEmailConflict = errors.New("email already exists")
 var ErrSlugConflict = errors.New("project slug already exists")
 var ErrRegistrationPlan = errors.New("registration plan is unavailable")
 var ErrCurrentPasswordInvalid = errors.New("current password is invalid")
+var ErrPasswordResetInvalid = errors.New("password reset token is invalid or expired")
 
 func (r *Repository) EnsureSuperAdmin(ctx context.Context, email, displayName, password string) error {
 	if len(password) < 8 {
@@ -46,8 +47,14 @@ func (r *Repository) EnsureSuperAdmin(ctx context.Context, email, displayName, p
 	if err != nil {
 		return err
 	}
-	var projectID string
-	if err := tx.QueryRow(ctx, `SELECT id::text FROM projects WHERE slug = 'millena-demo'`).Scan(&projectID); err != nil {
+	var projectID, organizationID string
+	if err := tx.QueryRow(ctx, `SELECT id::text,organization_id::text FROM projects WHERE slug = 'millena-demo'`).Scan(&projectID, &organizationID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO organization_members (organization_id,user_id,role,status)
+		VALUES ($1::uuid,$2::uuid,'owner','active')
+		ON CONFLICT (organization_id,user_id) DO UPDATE SET role='owner',status='active',updated_at=now()`, organizationID, userID); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `
@@ -82,13 +89,21 @@ func (r *Repository) EnsureMPRWorkspace(ctx context.Context, email, displayName,
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	var projectID string
-	err = tx.QueryRow(ctx, `
-		INSERT INTO projects (name, slug, default_locale, settings)
-		VALUES ('MPR Grupa', 'millena-demo', 'hr', '{"clientType":"enterprise","brand":"MPR Grupa"}'::jsonb)
-		ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, updated_at = now()
-		RETURNING id::text`,
-	).Scan(&projectID)
+	var projectID, organizationID string
+	err = tx.QueryRow(ctx, `SELECT id::text,organization_id::text FROM projects WHERE slug='millena-demo' FOR UPDATE`).Scan(&projectID, &organizationID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		if err := tx.QueryRow(ctx, `
+			INSERT INTO organizations (name,slug,status)
+			VALUES ('MPR Grupa','millena-demo','active')
+			ON CONFLICT (slug) DO UPDATE SET name=EXCLUDED.name,status='active',updated_at=now()
+			RETURNING id::text`).Scan(&organizationID); err != nil {
+			return err
+		}
+		err = tx.QueryRow(ctx, `
+			INSERT INTO projects (organization_id,name,slug,default_locale,settings)
+			VALUES ($1::uuid,'MPR Grupa','millena-demo','hr','{"clientType":"enterprise","brand":"MPR Grupa"}'::jsonb)
+			RETURNING id::text`, organizationID).Scan(&projectID)
+	}
 	if err != nil {
 		return err
 	}
@@ -130,10 +145,27 @@ func (r *Repository) EnsureMPRWorkspace(ctx context.Context, email, displayName,
 	}
 
 	if _, err := tx.Exec(ctx, `
+		INSERT INTO organization_members (organization_id,user_id,role,status)
+		VALUES ($1::uuid,$2::uuid,'owner','active')
+		ON CONFLICT (organization_id,user_id) DO UPDATE SET role='owner',status='active',updated_at=now()`, organizationID, userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `
 		INSERT INTO project_members (project_id, user_id, role, permissions, status)
 		VALUES ($1::uuid, $2::uuid, 'owner', '{"*":true}'::jsonb, 'active')
 		ON CONFLICT (project_id, user_id) DO UPDATE
 		SET role = 'owner', permissions = '{"*":true}'::jsonb, status = 'active'`, projectID, userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO organization_entitlements (
+			organization_id,plan_code,status,monthly_publication_limit,storage_limit_bytes,features
+		)
+		VALUES ($1::uuid,'unlimited','active',NULL,NULL,
+			'{"aiAgents":true,"analytics":true,"api":true,"auditLog":true,"automations":true,"prioritySupport":true,"socialChannels":"all","whiteLabel":true}'::jsonb)
+		ON CONFLICT (organization_id) DO UPDATE
+		SET plan_code='unlimited',status='active',monthly_publication_limit=NULL,
+		    storage_limit_bytes=NULL,features=EXCLUDED.features,updated_at=now()`, organizationID); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `
@@ -239,9 +271,21 @@ func (r *Repository) Register(ctx context.Context, input RegisterInput) (User, P
 
 	var access ProjectAccess
 	err = tx.QueryRow(ctx, `
-		INSERT INTO projects (name, slug, default_locale, settings)
-		VALUES ($1, $2, 'hr', jsonb_build_object('clientType', 'enterprise', 'brand', $1::text))
-		RETURNING id::text, name, slug, default_locale`, input.OrganizationName, input.ProjectSlug).Scan(
+		INSERT INTO organizations (name,slug,status)
+		VALUES ($1,$2,'active')
+		RETURNING id::text,name`, input.OrganizationName, input.ProjectSlug).Scan(
+		&access.OrganizationID, &access.OrganizationName)
+	if postgresCode(err) == "23505" {
+		return User{}, ProjectAccess{}, ErrSlugConflict
+	}
+	if err != nil {
+		return User{}, ProjectAccess{}, err
+	}
+	access.OrganizationRole = "owner"
+	err = tx.QueryRow(ctx, `
+		INSERT INTO projects (organization_id,name,slug,default_locale,settings)
+		VALUES ($3::uuid,$1,$2,'hr',jsonb_build_object('clientType','tenant','brand',$1::text))
+		RETURNING id::text,name,slug,default_locale`, input.OrganizationName, input.ProjectSlug, access.OrganizationID).Scan(
 		&access.ProjectID, &access.ProjectName, &access.ProjectSlug, &access.DefaultLocale)
 	if postgresCode(err) == "23505" {
 		return User{}, ProjectAccess{}, ErrSlugConflict
@@ -271,8 +315,23 @@ func (r *Repository) Register(ctx context.Context, input RegisterInput) (User, P
 	access.Entitlement.Status = "active"
 
 	if _, err := tx.Exec(ctx, `
+		INSERT INTO organization_members (organization_id,user_id,role,status)
+		VALUES ($1::uuid,$2::uuid,'owner','active')`, access.OrganizationID, user.ID); err != nil {
+		return User{}, ProjectAccess{}, err
+	}
+	if _, err := tx.Exec(ctx, `
 		INSERT INTO project_members (project_id, user_id, role, permissions, status)
 		VALUES ($1::uuid, $2::uuid, 'owner', '{"*":true}'::jsonb, 'active')`, access.ProjectID, user.ID); err != nil {
+		return User{}, ProjectAccess{}, err
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO organization_entitlements (
+			organization_id,plan_code,status,monthly_publication_limit,storage_limit_bytes,features
+		)
+		VALUES ($1::uuid,$2,'active',$3,$4,$5::jsonb)`,
+		access.OrganizationID, access.Entitlement.PlanCode,
+		access.Entitlement.MonthlyPublicationLimit, access.Entitlement.StorageLimitBytes,
+		access.Entitlement.Features); err != nil {
 		return User{}, ProjectAccess{}, err
 	}
 	if _, err := tx.Exec(ctx, `
@@ -296,6 +355,13 @@ func (r *Repository) Register(ctx context.Context, input RegisterInput) (User, P
 		return User{}, ProjectAccess{}, err
 	}
 	if err := seedOperationalWorkspace(ctx, tx, access.ProjectID, user.ID, newTenantOperationalWorkspaceSeed(input.OrganizationName)); err != nil {
+		return User{}, ProjectAccess{}, err
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events (project_id, actor_id, action, entity_type, entity_id, metadata)
+		VALUES ($1::uuid, $2::uuid, 'account.registered', 'account', $2::uuid,
+		        jsonb_build_object('displayName', $3::text, 'planCode', $4::text, 'projectName', $5::text))`,
+		access.ProjectID, user.ID, user.DisplayName, input.PlanCode, access.ProjectName); err != nil {
 		return User{}, ProjectAccess{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -338,7 +404,7 @@ func isRegistrationPlan(planCode string) bool {
 }
 
 func (r *Repository) ListRegistrationPlans(ctx context.Context) ([]RegistrationPlan, error) {
-	rows, err := r.pool.Query(ctx, `SELECT CASE WHEN code='unlimited' THEN 'enterprise' ELSE code END, name, description, monthly_publication_limit FROM plan_catalog WHERE is_system AND is_active AND code IN ('starter','optimum','unlimited') ORDER BY CASE code WHEN 'starter' THEN 1 WHEN 'optimum' THEN 2 ELSE 3 END`)
+	rows, err := r.pool.Query(ctx, `SELECT CASE WHEN code='unlimited' THEN 'enterprise' ELSE code END, name, description, price_cents, currency, monthly_publication_limit FROM plan_catalog WHERE is_system AND is_active AND code IN ('starter','optimum','unlimited') ORDER BY CASE code WHEN 'starter' THEN 1 WHEN 'optimum' THEN 2 ELSE 3 END`)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +412,7 @@ func (r *Repository) ListRegistrationPlans(ctx context.Context) ([]RegistrationP
 	plans := []RegistrationPlan{}
 	for rows.Next() {
 		var p RegistrationPlan
-		if err := rows.Scan(&p.Code, &p.Name, &p.Description, &p.MonthlyPublicationLimit); err != nil {
+		if err := rows.Scan(&p.Code, &p.Name, &p.Description, &p.PriceCents, &p.Currency, &p.MonthlyPublicationLimit); err != nil {
 			return nil, err
 		}
 		plans = append(plans, p)
@@ -461,15 +527,87 @@ func (r *Repository) DeleteSession(ctx context.Context, token string) error {
 	return err
 }
 
+func (r *Repository) RequestPasswordReset(ctx context.Context, email string) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var userID, displayName string
+	err = tx.QueryRow(ctx, `SELECT id::text, display_name FROM users WHERE lower(email)=lower($1) AND status='active'`, email).Scan(&userID, &displayName)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return tx.Commit(ctx)
+	}
+	if err != nil {
+		return err
+	}
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return err
+	}
+	token := base64.RawURLEncoding.EncodeToString(raw)
+	tokenHash := sha256.Sum256([]byte(token))
+	if _, err := tx.Exec(ctx, `UPDATE password_reset_tokens SET used_at=now() WHERE user_id=$1::uuid AND used_at IS NULL`, userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1::uuid,$2,now()+interval '60 minutes')`, userID, tokenHash[:]); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO email_notifications (recipient_user_id, event_type, subject, summary, action_path)
+		VALUES ($1::uuid,'password.reset_requested','Postavite novu lozinku za Millena AI',
+		'Zatražili ste promjenu lozinke. Link vrijedi 60 minuta i može se iskoristiti samo jednom.',
+		$2)`, userID, "/login.html?reset="+token); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func (r *Repository) ResetPassword(ctx context.Context, token, password string) error {
+	tokenHash := sha256.Sum256([]byte(token))
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var userID string
+	err = tx.QueryRow(ctx, `
+		UPDATE password_reset_tokens SET used_at=now()
+		WHERE token_hash=$1 AND used_at IS NULL AND expires_at>now()
+		RETURNING user_id::text`, tokenHash[:]).Scan(&userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrPasswordResetInvalid
+	}
+	if err != nil {
+		return err
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE users SET password_hash=$2,updated_at=now() WHERE id=$1::uuid AND status='active'`, userID, string(hash)); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM user_sessions WHERE user_id=$1::uuid`, userID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func (r *Repository) ListProjectAccess(ctx context.Context, userID string) ([]ProjectAccess, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT project.id::text, project.name, project.slug, project.default_locale,
+		SELECT organization.id::text,organization.name,organization_member.role,
+		       project.id::text, project.name, project.slug, project.default_locale,
 		       member.role, member.permissions,
 		       entitlement.plan_code, entitlement.status, entitlement.seat_limit,
 		       entitlement.monthly_publication_limit, entitlement.storage_limit_bytes,
 		       entitlement.features, entitlement.renews_at
 		FROM project_members AS member
 		JOIN projects AS project ON project.id = member.project_id AND project.status = 'active'
+		JOIN organizations AS organization ON organization.id=project.organization_id AND organization.status='active'
+		JOIN organization_members AS organization_member
+		  ON organization_member.organization_id=organization.id
+		 AND organization_member.user_id=member.user_id AND organization_member.status='active'
 		JOIN project_entitlements AS entitlement ON entitlement.project_id = project.id
 		WHERE member.user_id = $1::uuid AND member.status = 'active'
 		ORDER BY member.created_at`, userID)
@@ -481,6 +619,7 @@ func (r *Repository) ListProjectAccess(ctx context.Context, userID string) ([]Pr
 	for rows.Next() {
 		var access ProjectAccess
 		if err := rows.Scan(
+			&access.OrganizationID, &access.OrganizationName, &access.OrganizationRole,
 			&access.ProjectID, &access.ProjectName, &access.ProjectSlug, &access.DefaultLocale,
 			&access.Role, &access.Permissions,
 			&access.Entitlement.PlanCode, &access.Entitlement.Status, &access.Entitlement.SeatLimit,
@@ -498,9 +637,14 @@ func (r *Repository) ProjectRole(ctx context.Context, userID, projectID string) 
 	var role string
 	var permissions map[string]any
 	err := r.pool.QueryRow(ctx, `
-		SELECT role, permissions
-		FROM project_members
-		WHERE user_id = $1::uuid AND project_id = $2::uuid AND status = 'active'`, userID, projectID).Scan(&role, &permissions)
+		SELECT access.role,access.permissions
+		FROM project_members AS access
+		JOIN projects AS project ON project.id=access.project_id AND project.status='active'
+		JOIN organizations AS organization ON organization.id=project.organization_id AND organization.status='active'
+		JOIN organization_members AS member
+		  ON member.organization_id=organization.id
+		 AND member.user_id=access.user_id AND member.status='active'
+		WHERE access.user_id=$1::uuid AND access.project_id=$2::uuid AND access.status='active'`, userID, projectID).Scan(&role, &permissions)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil, ErrNotFound
 	}

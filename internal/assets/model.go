@@ -10,6 +10,7 @@ const (
 	PurposeAssistantAttachment = "assistant_attachment"
 	PurposeSocialMedia         = "social_media"
 	PurposeContentMedia        = "content_media"
+	PurposeStrategyDocument    = "strategy_document"
 )
 
 type Asset struct {
@@ -62,7 +63,7 @@ type UpdateInput struct {
 
 func ValidPurpose(value string) bool {
 	switch value {
-	case PurposeAssistantAttachment, PurposeSocialMedia, PurposeContentMedia:
+	case PurposeAssistantAttachment, PurposeSocialMedia, PurposeContentMedia, PurposeStrategyDocument:
 		return true
 	default:
 		return false

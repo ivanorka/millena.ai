@@ -55,15 +55,25 @@ func extractPDF(data []byte) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("open PDF: %w", err)
 	}
-	plainText, err := reader.GetPlainText()
-	if err != nil {
-		return "", fmt.Errorf("extract PDF text: %w", err)
+	fonts := make(map[string]*pdf.Font)
+	pages := make([]string, 0, reader.NumPage())
+	for pageNumber := 1; pageNumber <= reader.NumPage(); pageNumber++ {
+		page := reader.Page(pageNumber)
+		for _, name := range page.Fonts() {
+			if _, exists := fonts[name]; !exists {
+				font := page.Font(name)
+				fonts[name] = &font
+			}
+		}
+		text, err := page.GetPlainText(fonts)
+		if err != nil {
+			return "", fmt.Errorf("extract PDF page %d: %w", pageNumber, err)
+		}
+		pages = append(pages, text)
 	}
-	extracted, err := io.ReadAll(io.LimitReader(plainText, 2<<20))
-	if err != nil {
-		return "", fmt.Errorf("read PDF text: %w", err)
-	}
-	return string(extracted), nil
+	// The separator stays in the stored plain text so a team can see where a
+	// PDF page ended while reviewing or editing the extracted strategy.
+	return strings.Join(pages, "\n\n------------------------------\n\n"), nil
 }
 
 func extractOfficeXML(data []byte, prefix string) (string, error) {

@@ -127,6 +127,42 @@ func (h *Handler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": SessionUser{User: user, Projects: projects}})
 }
 
+func (h *Handler) RequestPasswordReset(c *gin.Context) {
+	var input PasswordResetRequestInput
+	if c.ShouldBindJSON(&input) != nil || h.repository == nil {
+		c.Status(http.StatusAccepted)
+		return
+	}
+	email := strings.ToLower(strings.TrimSpace(input.Email))
+	if address, err := mail.ParseAddress(email); err == nil && strings.ToLower(address.Address) == email {
+		_ = h.repository.RequestPasswordReset(c.Request.Context(), email)
+	}
+	// Deliberately identical for existing and unknown accounts.
+	c.Status(http.StatusAccepted)
+}
+
+func (h *Handler) ConfirmPasswordReset(c *gin.Context) {
+	var input PasswordResetConfirmInput
+	if c.ShouldBindJSON(&input) != nil || len(input.Password) < 8 || len(input.Password) > 128 || strings.TrimSpace(input.Token) == "" {
+		writeError(c, http.StatusUnprocessableEntity, "validation_error", "Reset link or new password is invalid.")
+		return
+	}
+	if h.repository == nil {
+		writeError(c, http.StatusServiceUnavailable, "database_unavailable", "Database is not configured.")
+		return
+	}
+	err := h.repository.ResetPassword(c.Request.Context(), strings.TrimSpace(input.Token), input.Password)
+	if errors.Is(err, ErrPasswordResetInvalid) {
+		writeError(c, http.StatusBadRequest, "reset_link_invalid", "This reset link has expired or was already used.")
+		return
+	}
+	if err != nil {
+		writeError(c, http.StatusInternalServerError, "internal_error", "Password could not be reset.")
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func (h *Handler) Me(c *gin.Context) {
 	user, ok := CurrentUser(c)
 	if !ok {

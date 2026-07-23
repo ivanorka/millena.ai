@@ -2,6 +2,7 @@ package content
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"regexp"
 	"strings"
@@ -1044,7 +1045,7 @@ func (r *Repository) GetStrategy(ctx context.Context, projectID string) (Strateg
 	strategy, err := scanStrategy(r.pool.QueryRow(ctx, `
 		SELECT project_id::text, mode, six_month_goal, primary_goals, priority_topics,
 		       audience, audience_problem, brand_message, proof_points, forbidden_topics,
-		       success_metrics, tone, source_filename, source_mime_type, source_text,
+		       success_metrics, tone, source_filename, source_mime_type, source_asset_id::text, source_text,
 		       revision, updated_by::text, created_at, updated_at
 		FROM project_strategies
 		WHERE project_id = $1::uuid`, projectID))
@@ -1093,42 +1094,71 @@ func (r *Repository) SaveStrategy(ctx context.Context, projectID, userID string,
 		INSERT INTO project_strategies (
 			project_id, mode, six_month_goal, primary_goals, priority_topics, audience,
 			audience_problem, brand_message, proof_points, forbidden_topics,
-			success_metrics, tone, updated_by
+			success_metrics, tone, source_text, updated_by
 		)
-		VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::uuid)
+		VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::uuid)
 		ON CONFLICT (project_id) DO UPDATE SET
 			mode = EXCLUDED.mode, six_month_goal = EXCLUDED.six_month_goal,
 			primary_goals = EXCLUDED.primary_goals, priority_topics = EXCLUDED.priority_topics,
 			audience = EXCLUDED.audience, audience_problem = EXCLUDED.audience_problem,
 			brand_message = EXCLUDED.brand_message, proof_points = EXCLUDED.proof_points,
 			forbidden_topics = EXCLUDED.forbidden_topics, success_metrics = EXCLUDED.success_metrics,
-			tone = EXCLUDED.tone, revision = project_strategies.revision + 1,
+			tone = EXCLUDED.tone, source_text = COALESCE(EXCLUDED.source_text, project_strategies.source_text), revision = project_strategies.revision + 1,
 			updated_by = EXCLUDED.updated_by, updated_at = now()
 		RETURNING project_id::text, mode, six_month_goal, primary_goals, priority_topics,
 		          audience, audience_problem, brand_message, proof_points, forbidden_topics,
-		          success_metrics, tone, source_filename, source_mime_type, source_text,
+		          success_metrics, tone, source_filename, source_mime_type, source_asset_id::text, source_text,
 		          revision, updated_by::text, created_at, updated_at`,
 		projectID, input.Mode, input.SixMonthGoal, input.PrimaryGoals, input.PriorityTopics,
 		input.Audience, input.AudienceProblem, input.BrandMessage, input.ProofPoints,
-		input.ForbiddenTopics, input.SuccessMetrics, input.Tone, userID))
+		input.ForbiddenTopics, input.SuccessMetrics, input.Tone, input.SourceText, userID))
 }
 
-func (r *Repository) SaveStrategyFile(ctx context.Context, projectID, userID, filename, mimeType, extractedText string) (Strategy, error) {
-	return scanStrategy(r.pool.QueryRow(ctx, `
+func (r *Repository) SaveStrategyFile(ctx context.Context, projectID, userID, filename, mimeType, extractedText string, data []byte) (Strategy, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return Strategy{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var previousAssetID *string
+	if err := tx.QueryRow(ctx, `SELECT source_asset_id::text FROM project_strategies WHERE project_id = $1::uuid FOR UPDATE`, projectID).Scan(&previousAssetID); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return Strategy{}, err
+	}
+	digest := sha256.Sum256(data)
+	var assetID string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO project_assets (project_id, uploaded_by, purpose, filename, mime_type, size_bytes, sha256, data, extracted_text)
+		VALUES ($1::uuid, $2::uuid, 'strategy_document', $3, $4, $5, $6, $7, $8)
+		RETURNING id::text`, projectID, userID, filename, mimeType, len(data), digest[:], data, extractedText).Scan(&assetID); err != nil {
+		return Strategy{}, err
+	}
+	strategy, err := scanStrategy(tx.QueryRow(ctx, `
 		INSERT INTO project_strategies (
-			project_id, mode, source_filename, source_mime_type, source_text, updated_by
+			project_id, mode, source_filename, source_mime_type, source_asset_id, source_text, updated_by
 		)
-		VALUES ($1::uuid, 'upload', $2, $3, $4, $5::uuid)
+		VALUES ($1::uuid, 'upload', $2, $3, $4::uuid, $5, $6::uuid)
 		ON CONFLICT (project_id) DO UPDATE SET
 			mode = 'upload', source_filename = EXCLUDED.source_filename,
-			source_mime_type = EXCLUDED.source_mime_type, source_text = EXCLUDED.source_text,
+			source_mime_type = EXCLUDED.source_mime_type, source_asset_id = EXCLUDED.source_asset_id, source_text = EXCLUDED.source_text,
 			revision = project_strategies.revision + 1, updated_by = EXCLUDED.updated_by,
 			updated_at = now()
 		RETURNING project_id::text, mode, six_month_goal, primary_goals, priority_topics,
 		          audience, audience_problem, brand_message, proof_points, forbidden_topics,
-		          success_metrics, tone, source_filename, source_mime_type, source_text,
+		          success_metrics, tone, source_filename, source_mime_type, source_asset_id::text, source_text,
 		          revision, updated_by::text, created_at, updated_at`,
-		projectID, filename, mimeType, extractedText, userID))
+		projectID, filename, mimeType, assetID, extractedText, userID))
+	if err != nil {
+		return Strategy{}, err
+	}
+	if previousAssetID != nil && *previousAssetID != "" {
+		if _, err := tx.Exec(ctx, `DELETE FROM project_assets WHERE project_id = $1::uuid AND id = $2::uuid`, projectID, *previousAssetID); err != nil {
+			return Strategy{}, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Strategy{}, err
+	}
+	return strategy, nil
 }
 
 func (r *Repository) RecordAudit(ctx context.Context, projectID, userID, action, entityType string, entityID *string, metadata map[string]any) error {
@@ -1162,7 +1192,7 @@ func scanStrategy(scanner rowScanner) (Strategy, error) {
 		&strategy.PriorityTopics, &strategy.Audience, &strategy.AudienceProblem,
 		&strategy.BrandMessage, &strategy.ProofPoints, &strategy.ForbiddenTopics,
 		&strategy.SuccessMetrics, &strategy.Tone, &strategy.SourceFilename,
-		&strategy.SourceMIMEType, &strategy.SourceText, &strategy.Revision,
+		&strategy.SourceMIMEType, &strategy.SourceAssetID, &strategy.SourceText, &strategy.Revision,
 		&strategy.UpdatedBy, &strategy.CreatedAt, &strategy.UpdatedAt,
 	)
 	if strategy.PrimaryGoals == nil {

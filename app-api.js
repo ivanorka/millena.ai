@@ -71,11 +71,13 @@
   let blogDirty = false;
   let serviceRequests = [];
   let teamMembers = [];
+  let organizationDetail = null;
   let plans = [];
   let entitlement = null;
   let profileSaveTimer = 0;
   let profileChangeVersion = 0;
   let profileSaveQueue = Promise.resolve();
+  let notificationPreferences = null;
 
   function statusCopy(status) {
     const copy = {
@@ -1596,6 +1598,14 @@
         ? `${projectStrategy.sourceFilename} · ${currentLanguage === "hr" ? "tekst izdvojen i spremljen" : "text extracted and saved"}`
         : `${currentLanguage === "hr" ? "Ručni kontekst spremljen" : "Manual context saved"} · rev ${projectStrategy.revision}`;
     }
+    const sourcePreview = document.querySelector("#strategy-source-preview");
+    if (sourcePreview) sourcePreview.hidden = !String(projectStrategy?.sourceText || "").trim();
+    const sourceDownload = document.querySelector("#strategy-source-download");
+    if (sourceDownload) {
+      const available = Boolean(projectStrategy?.sourceAssetId && projectID);
+      sourceDownload.hidden = !available;
+      sourceDownload.href = available ? `${apiBase}/projects/${projectID}/assets/${projectStrategy.sourceAssetId}/download` : "#";
+    }
     renderSettingsStrategy();
     hydrateSocialStudio();
   }
@@ -1871,12 +1881,12 @@
       .filter(Boolean);
   }
 
-  function collectStrategyInput() {
+  function collectStrategyInput(options = {}) {
     const field = (name) => document.querySelector(`[data-strategy-field="${name}"]`)?.value.trim() || "";
     const topics = [...field("priorityTopics").split(","), ...selectedButtonLabels("[data-strategy-topics]")]
       .map((value) => value.trim()).filter(Boolean);
     const toneValues = [...document.querySelectorAll("[data-strategy-tone]")].map((input) => `${input.dataset.strategyTone}:${input.value}`);
-    return {
+    const payload = {
       mode: document.querySelector("[data-strategy-mode].selected")?.dataset.strategyMode || "questions",
       sixMonthGoal: field("sixMonthGoal"),
       primaryGoals: selectedButtonLabels("[data-strategy-goals]"),
@@ -1889,14 +1899,16 @@
       successMetrics: field("successMetrics"),
       tone: toneValues.join(", "),
     };
+    if (Object.hasOwn(options, "sourceText")) payload.sourceText = options.sourceText;
+    return payload;
   }
 
-  async function saveStrategy() {
+  async function saveStrategy(options = {}) {
     if (!projectID || !projectRoleAllows("owner", "lead", "editor")) return null;
     window.clearTimeout(strategySaveTimer);
     const targetProjectID = projectID;
     const requestVersion = ++strategyChangeVersion;
-    const payload = collectStrategyInput();
+    const payload = collectStrategyInput(options);
     const button = document.querySelector("#strategy-save");
     strategySavePending += 1;
     if (button) button.disabled = true;
@@ -1973,6 +1985,27 @@
       }
     }
     refreshIcons();
+  }
+
+  function openStrategySourceModal() {
+    if (!String(projectStrategy?.sourceText || "").trim()) return;
+    const text = document.querySelector("#strategy-source-text");
+    const meta = document.querySelector("#strategy-source-meta");
+    if (text) text.value = projectStrategy.sourceText;
+    if (meta) {
+      const filename = projectStrategy.sourceFilename || (currentLanguage === "hr" ? "Učitani dokument" : "Uploaded document");
+      const characters = [...String(projectStrategy.sourceText || "")].length;
+      meta.textContent = `${filename} · ${characters.toLocaleString(currentLanguage === "hr" ? "hr-HR" : "en-GB")} ${currentLanguage === "hr" ? "znakova" : "characters"}`;
+    }
+    const save = document.querySelector("#strategy-source-save");
+    if (save) save.disabled = !projectRoleAllows("owner", "lead", "editor");
+    openDomainModal("strategy-source-modal");
+  }
+
+  async function saveStrategySourceText() {
+    const text = document.querySelector("#strategy-source-text")?.value || "";
+    const saved = await saveStrategy({ sourceText: text });
+    if (saved) closeDomainModal("strategy-source-modal");
   }
 
   function resetContentDeleteButton() {
@@ -4510,6 +4543,148 @@
     }
   }
 
+  function organizationRoleLabel(role) {
+    const labels = {
+      owner: ["Vlasnik", "Owner"],
+      admin: ["Administrator", "Administrator"],
+      member: ["Korisnik", "User"],
+    };
+    return labels[role]?.[currentLanguage === "hr" ? 0 : 1] || role;
+  }
+
+  function renderOrganization() {
+    const section = document.querySelector("#organization-users-section");
+    const list = document.querySelector("#organization-member-list");
+    if (!section || !list || !organizationDetail) return;
+    section.hidden = false;
+    setText("#organization-settings-name", organizationDetail.name);
+    setText("#organization-member-count", organizationDetail.members.length);
+    setText("#organization-project-count", organizationDetail.members.reduce((sum, member) => sum + (member.projectCount || 0), 0));
+    list.replaceChildren();
+    organizationDetail.members.forEach((member) => {
+      const row = document.createElement("div");
+      row.className = `organization-member-row${member.status === "active" ? "" : " is-suspended"}`;
+      row.dataset.organizationMember = member.userId;
+      const avatar = document.createElement("span");
+      avatar.className = "avatar small";
+      avatar.textContent = member.displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "U";
+      const copy = document.createElement("span");
+      const name = document.createElement("strong");
+      name.textContent = member.displayName;
+      const email = document.createElement("small");
+      email.textContent = `${member.email} · ${member.status === "active" ? (currentLanguage === "hr" ? "aktivan" : "active") : (currentLanguage === "hr" ? "deaktiviran" : "deactivated")}`;
+      copy.append(name, email);
+      const role = document.createElement("span");
+      role.className = "organization-role";
+      role.textContent = organizationRoleLabel(member.role);
+      const projects = document.createElement("span");
+      projects.className = "organization-projects";
+      projects.textContent = member.projectCount === 1
+        ? (currentLanguage === "hr" ? "1 projekt" : "1 project")
+        : `${member.projectCount} ${currentLanguage === "hr" ? "projekata" : "projects"}`;
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.dataset.organizationMemberEdit = member.userId;
+      edit.setAttribute("aria-label", currentLanguage === "hr" ? `Uredi korisnika ${member.displayName}` : `Edit user ${member.displayName}`);
+      const icon = document.createElement("i");
+      icon.dataset.lucide = "pencil";
+      edit.append(icon);
+      row.append(avatar, copy, role, projects, edit);
+      list.append(row);
+    });
+    if (!organizationDetail.members.length) {
+      const empty = document.createElement("p");
+      empty.className = "content-empty";
+      empty.textContent = currentLanguage === "hr" ? "Firma još nema korisnika." : "The company has no users yet.";
+      list.append(empty);
+    }
+    refreshIcons();
+  }
+
+  async function loadOrganization() {
+    organizationDetail = await apiRequest(`/projects/${projectID}/organization`);
+    renderOrganization();
+  }
+
+  function openOrganizationMemberModal(member = null) {
+    const editing = Boolean(member);
+    document.querySelector("#organization-member-id").value = member?.userId || "";
+    document.querySelector("#organization-member-name").value = member?.displayName || "";
+    document.querySelector("#organization-member-email").value = member?.email || "";
+    document.querySelector("#organization-member-name").disabled = editing;
+    document.querySelector("#organization-member-email").disabled = editing;
+    ensureSelectValue(document.querySelector("#organization-member-role"), member?.role || "member", member?.role || "member");
+    ensureSelectValue(document.querySelector("#organization-member-status"), member?.status || "active", member?.status || "active");
+    document.querySelector("#organization-member-password").value = "";
+    document.querySelector("#organization-member-project-access").checked = true;
+    ensureSelectValue(document.querySelector("#organization-member-project-role"), "contributor", "contributor");
+    document.querySelectorAll(".organization-new-member-field").forEach((field) => { field.hidden = editing; });
+    document.querySelector(".organization-member-status-field").hidden = !editing;
+    document.querySelector("#organization-member-delete").hidden = !editing || member?.userId === sessionUser?.id;
+    const ownerOption = document.querySelector('#organization-member-role option[value="owner"]');
+    if (ownerOption) ownerOption.disabled = !editing && member?.role !== "owner";
+    const title = document.querySelector("#organization-member-modal-title");
+    if (title) title.textContent = editing
+      ? (currentLanguage === "hr" ? "Uredi korisnika firme" : "Edit company user")
+      : (currentLanguage === "hr" ? "Novi korisnik firme" : "New company user");
+    openDomainModal("organization-member-modal");
+    document.querySelector(editing ? "#organization-member-role" : "#organization-member-name")?.focus();
+  }
+
+  async function saveOrganizationMember() {
+    const memberID = document.querySelector("#organization-member-id").value;
+    const button = document.querySelector("#organization-member-save");
+    button.disabled = true;
+    try {
+      if (memberID) {
+        await apiRequest(`/projects/${projectID}/organization/members/${memberID}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            role: document.querySelector("#organization-member-role").value,
+            status: document.querySelector("#organization-member-status").value,
+          }),
+        });
+      } else {
+        await apiRequest(`/projects/${projectID}/organization/members`, {
+          method: "POST",
+          body: JSON.stringify({
+            displayName: document.querySelector("#organization-member-name").value.trim(),
+            email: document.querySelector("#organization-member-email").value.trim(),
+            tempPassword: document.querySelector("#organization-member-password").value,
+            role: document.querySelector("#organization-member-role").value,
+            projectRole: document.querySelector("#organization-member-project-role").value,
+            grantProjectAccess: document.querySelector("#organization-member-project-access").checked,
+          }),
+        });
+      }
+      closeDomainModal("organization-member-modal");
+      await Promise.all([loadOrganization(), ...(projectRoleAllows("owner", "lead") ? [loadTeam()] : [])]);
+      showToast("saved");
+    } catch (error) {
+      showDomainError(currentLanguage === "hr" ? "Korisnik firme" : "Company user", error);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  async function deleteOrganizationMember() {
+    const memberID = document.querySelector("#organization-member-id").value;
+    const member = organizationDetail?.members.find((candidate) => candidate.userId === memberID);
+    if (!memberID || !member) return;
+    const confirmed = window.confirm(currentLanguage === "hr"
+      ? `Ukloniti račun „${member.displayName}” iz firme i svih njezinih projekata?`
+      : `Remove “${member.displayName}” from the company and all its projects?`);
+    if (!confirmed) return;
+    try {
+      await apiRequest(`/projects/${projectID}/organization/members/${memberID}`, { method: "DELETE" });
+      closeDomainModal("organization-member-modal");
+      await Promise.all([loadOrganization(), ...(projectRoleAllows("owner", "lead") ? [loadTeam()] : [])]);
+      showToast("saved");
+    } catch (error) {
+      showDomainError(currentLanguage === "hr" ? "Uklanjanje korisnika" : "Removing user", error);
+    }
+  }
+
   function renderTeam() {
     const list = document.querySelector("#team-list");
     if (!list) return;
@@ -4553,6 +4728,115 @@
     teamMembers = await apiRequest(`/projects/${projectID}/team`);
     renderTeam();
     populateBlogAuthors(document.querySelector("#blog-author")?.value || contentItems.find((item) => item.id === blogContentID)?.metadata?.author || sessionUser?.id || "");
+  }
+
+  function notificationGroupPresentation(group) {
+    const groups = {
+      content: ["file-text", "Sadržaj i pregledi", "Content and reviews"],
+      calendar: ["calendar-days", "Kalendar", "Calendar"],
+      publishing: ["send", "Objave i newsletter", "Publishing and newsletter"],
+      workspace: ["briefcase-business", "Projekt i strategija", "Project and strategy"],
+      security: ["shield-check", "Sigurnost računa", "Account security"],
+    };
+    return groups[group] || ["bell", group, group];
+  }
+
+  function renderNotificationPreferences() {
+    const list = document.querySelector("#notification-preferences-list");
+    const master = document.querySelector("#notification-email-enabled");
+    if (!list || !master || !notificationPreferences) return;
+    master.checked = Boolean(notificationPreferences.emailEnabled);
+    list.replaceChildren();
+    const groups = new Map();
+    notificationPreferences.events.forEach((event) => {
+      if (!groups.has(event.group)) groups.set(event.group, []);
+      groups.get(event.group).push(event);
+    });
+    groups.forEach((events, groupName) => {
+      const section = document.createElement("section");
+      section.className = "notification-preference-group";
+      const header = document.createElement("header");
+      const [iconName, labelHR, labelEN] = notificationGroupPresentation(groupName);
+      const icon = document.createElement("i");
+      icon.dataset.lucide = iconName;
+      const title = document.createElement("strong");
+      title.textContent = currentLanguage === "hr" ? labelHR : labelEN;
+      header.append(icon, title);
+      section.append(header);
+      events.forEach((event) => {
+        const row = document.createElement("label");
+        const locked = !event.configurable;
+        row.className = `notification-preference-row${locked ? " is-locked" : ""}${!notificationPreferences.emailEnabled && !locked ? " is-disabled" : ""}`;
+        const copy = document.createElement("div");
+        const label = document.createElement("strong");
+        label.textContent = currentLanguage === "hr" ? event.labelHr : event.labelEn;
+        const description = document.createElement("small");
+        description.textContent = currentLanguage === "hr" ? event.descriptionHr : event.descriptionEn;
+        copy.append(label, description);
+        if (locked) {
+          const badge = document.createElement("span");
+          badge.className = "notification-locked-badge";
+          const lock = document.createElement("i");
+          lock.dataset.lucide = "lock-keyhole";
+          const badgeText = document.createElement("span");
+          badgeText.textContent = currentLanguage === "hr" ? "Uvijek uključeno" : "Always enabled";
+          badge.append(lock, badgeText);
+          row.append(copy, badge);
+        } else {
+          const toggle = document.createElement("span");
+          toggle.className = "switch";
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.checked = Boolean(event.enabled);
+          input.disabled = !notificationPreferences.emailEnabled;
+          input.dataset.notificationEvent = event.eventType;
+          input.setAttribute("aria-label", label.textContent);
+          const track = document.createElement("span");
+          toggle.append(input, track);
+          row.append(copy, toggle);
+        }
+        section.append(row);
+      });
+      list.append(section);
+    });
+    refreshIcons();
+  }
+
+  async function loadNotificationPreferences() {
+    notificationPreferences = await apiRequest("/notification-preferences");
+    renderNotificationPreferences();
+  }
+
+  async function saveNotificationPreferences() {
+    if (!notificationPreferences) return;
+    const button = document.querySelector("#notification-preferences-save");
+    const status = document.querySelector("#notification-preferences-status");
+    if (button) button.disabled = true;
+    if (status) {
+      status.className = "";
+      status.textContent = currentLanguage === "hr" ? "Spremam postavke…" : "Saving preferences…";
+    }
+    try {
+      const events = Object.fromEntries(notificationPreferences.events
+        .filter((event) => event.configurable)
+        .map((event) => [event.eventType, Boolean(event.enabled)]));
+      notificationPreferences = await apiRequest("/notification-preferences", {
+        method: "PUT",
+        body: JSON.stringify({ emailEnabled: Boolean(notificationPreferences.emailEnabled), events }),
+      });
+      renderNotificationPreferences();
+      if (status) {
+        status.className = "success";
+        status.textContent = currentLanguage === "hr" ? "Postavke obavijesti su spremljene." : "Notification preferences are saved.";
+      }
+    } catch (error) {
+      if (status) {
+        status.className = "error";
+        status.textContent = error.message;
+      }
+    } finally {
+      if (button) button.disabled = false;
+    }
   }
 
   function openTeamModal(member = null) {
@@ -4878,8 +5162,15 @@
     setText("#plan-current", entitlement?.planName || activePlan?.name || entitlement?.planCode || "—");
     const description = document.querySelector("#plan-description");
     if (description) {
-      const limits = `${planLimit(entitlement?.seatLimit, currentLanguage === "hr" ? "mjesta" : "seats")} · ${planLimit(entitlement?.monthlyPublicationLimit, currentLanguage === "hr" ? "objava/mj." : "posts/mo")} · ${planStorageLimit(entitlement?.storageLimitBytes)}`;
+      const users = currentLanguage === "hr" ? "Neograničeno korisnika" : "Unlimited users";
+      const limits = `${users} · ${planLimit(entitlement?.monthlyPublicationLimit, currentLanguage === "hr" ? "objava/mj." : "posts/mo")} · ${planStorageLimit(entitlement?.storageLimitBytes)}`;
       description.textContent = [activePlan?.description, limits].filter(Boolean).join(" · ");
+    }
+    const seatInput = document.querySelector("#plan-custom-seats");
+    if (seatInput) {
+      seatInput.value = currentLanguage === "hr" ? "Neograničeno" : "Unlimited";
+      seatInput.disabled = true;
+      seatInput.closest("label")?.querySelector("span")?.replaceChildren(document.createTextNode(currentLanguage === "hr" ? "Broj korisnika" : "User limit"));
     }
     const features = document.querySelector("#plan-features");
     if (features) {
@@ -4997,7 +5288,7 @@
           description: document.querySelector("#plan-custom-description").value.trim(),
           priceCents: Math.max(0, Math.round(Number(document.querySelector("#plan-custom-price").value || 0) * 100)),
           currency: "EUR", billingInterval: "month",
-          seatLimit: positiveIntegerOrNull("#plan-custom-seats", null),
+          seatLimit: null,
           monthlyPublicationLimit: positiveIntegerOrNull("#plan-custom-publications", null),
           storageLimitBytes: (() => {
             const megabytes = positiveIntegerOrNull("#plan-custom-storage", null);
@@ -5072,7 +5363,7 @@
     openDomainModal("project-modal");
     const newProjectForm = document.querySelector("#project-new-form");
     const newProjectToggle = document.querySelector("#project-new-toggle");
-    const canCreate = projectRoleAllows("owner");
+    const canCreate = ["owner", "admin"].includes(projectAccess?.organizationRole);
     if (newProjectToggle) newProjectToggle.hidden = !canCreate;
     if (newProjectForm) newProjectForm.hidden = true;
     if (newProjectToggle) newProjectToggle.setAttribute("aria-expanded", "false");
@@ -5084,7 +5375,7 @@
   }
 
   async function createProject() {
-    if (!projectRoleAllows("owner")) {
+    if (!["owner", "admin"].includes(projectAccess?.organizationRole)) {
       showDomainError(currentLanguage === "hr" ? "Izrada projekta" : "Creating project", new Error(currentLanguage === "hr" ? "Samo administrator može dodati projekt." : "Only an administrator can add a project."));
       return;
     }
@@ -5372,7 +5663,7 @@
       .join("") || "PRJ";
     const activeEntitlement = entitlement || projectAccess.entitlement || {};
     const publicationLimit = activeEntitlement.monthlyPublicationLimit;
-    const publishedThisMonth = dashboardData?.stats?.publishedThisMonth || 0;
+    const publishedThisMonth = dashboardData?.stats?.planUsageThisMonth ?? dashboardData?.stats?.publishedThisMonth ?? 0;
     document.querySelectorAll(".project-switcher .project-avatar").forEach((node) => { node.textContent = projectInitials; });
     document.querySelectorAll(".project-switcher .project-copy strong").forEach((node) => { node.textContent = projectAccess.projectName; });
     const hasProjectChoice = (window.__millenaProjectAccess || []).length > 1;
@@ -5385,8 +5676,9 @@
     document.querySelectorAll(".profile-button .avatar").forEach((node) => { node.textContent = initials; });
     document.querySelectorAll(".profile-button strong").forEach((node) => { node.textContent = sessionUser.displayName; });
     document.querySelectorAll(".profile-button small").forEach((node) => {
-      node.dataset.hr = projectAccess.role === "owner" ? "Administrator klijenta" : projectAccess.role;
-      node.dataset.en = projectAccess.role === "owner" ? "Client administrator" : projectAccess.role;
+      const organizationAdmin = ["owner", "admin"].includes(projectAccess.organizationRole);
+      node.dataset.hr = organizationAdmin ? "Administrator firme" : projectAccess.role;
+      node.dataset.en = organizationAdmin ? "Company administrator" : projectAccess.role;
       node.textContent = node.dataset[currentLanguage];
     });
     const permissionsButton = document.querySelector("#permissions-manage");
@@ -5522,10 +5814,12 @@
         ["content AI", loadAIStatus], ["profile", loadProfile], ["dashboard", loadDashboard],
         ["channel connections", loadChannelConnections], ["newsletter deliveries", loadNewsletterDeliveries],
         ["plans", loadPlans], ["assets", loadProjectAssets], ["project personas", loadProjectPersonas],
+        ["notification preferences", loadNotificationPreferences],
       ];
       if (featureIncluded("automations")) domainLoads.push(["automations", loadAutomations]);
       if (featureIncluded("aiAgents")) domainLoads.push(["assistant", loadAssistant]);
       if (projectRoleAllows("owner", "lead", "editor")) domainLoads.push(["audience", loadAudience]);
+      if (["owner", "admin"].includes(projectAccess.organizationRole)) domainLoads.push(["organization", loadOrganization]);
       if (projectRoleAllows("owner", "lead")) domainLoads.push(["team", loadTeam], ["service requests", loadServiceRequests]);
       const failedLoads = [];
       await Promise.all(domainLoads.map(([name, loader]) => loader().catch((error) => {
@@ -5865,6 +6159,20 @@
   document.querySelector("#team-modal")?.addEventListener("click", (event) => { if (event.target === event.currentTarget) closeDomainModal("team-modal"); });
   document.querySelector("#team-save")?.addEventListener("click", saveTeamMember);
   document.querySelector("#team-delete")?.addEventListener("click", deleteTeamMember);
+  document.querySelector("#organization-member-add")?.addEventListener("click", () => openOrganizationMemberModal());
+  document.querySelector("#organization-member-list")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-organization-member-edit]");
+    const member = button && organizationDetail?.members.find((candidate) => candidate.userId === button.dataset.organizationMemberEdit);
+    if (member) openOrganizationMemberModal(member);
+  });
+  document.querySelectorAll("[data-organization-member-close]").forEach((button) => button.addEventListener("click", () => closeDomainModal("organization-member-modal")));
+  document.querySelector("#organization-member-modal")?.addEventListener("click", (event) => { if (event.target === event.currentTarget) closeDomainModal("organization-member-modal"); });
+  document.querySelector("#organization-member-save")?.addEventListener("click", saveOrganizationMember);
+  document.querySelector("#organization-member-delete")?.addEventListener("click", deleteOrganizationMember);
+  document.querySelector("#organization-member-project-access")?.addEventListener("change", (event) => {
+    const field = document.querySelector("#organization-member-project-role-field");
+    if (field) field.hidden = !event.currentTarget.checked;
+  });
 
   document.querySelector("#plan-manage")?.addEventListener("click", () => openDomainModal("plan-modal"));
   document.querySelectorAll("[data-plan-close]").forEach((button) => button.addEventListener("click", () => closeDomainModal("plan-modal")));
@@ -5918,6 +6226,18 @@
   document.querySelectorAll("[data-notifications-close]").forEach((button) => button.addEventListener("click", closeNotifications));
   document.querySelector("#notifications-modal")?.addEventListener("click", (event) => { if (event.target === event.currentTarget) closeNotifications(); });
   document.querySelector("#notifications-view-more")?.addEventListener("click", () => { notificationsExpanded = !notificationsExpanded; renderNotifications(); });
+  document.querySelector("#notification-email-enabled")?.addEventListener("change", (event) => {
+    if (!notificationPreferences) return;
+    notificationPreferences.emailEnabled = event.currentTarget.checked;
+    renderNotificationPreferences();
+  });
+  document.querySelector("#notification-preferences-list")?.addEventListener("change", (event) => {
+    const input = event.target.closest("[data-notification-event]");
+    if (!input || !notificationPreferences) return;
+    const preference = notificationPreferences.events.find((item) => item.eventType === input.dataset.notificationEvent);
+    if (preference?.configurable) preference.enabled = input.checked;
+  });
+  document.querySelector("#notification-preferences-save")?.addEventListener("click", saveNotificationPreferences);
   document.querySelector("#dashboard-content-list")?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-dashboard-content-id]");
     const item = button && contentItems.find((candidate) => candidate.id === button.dataset.dashboardContentId);
@@ -6080,6 +6400,10 @@
   });
   document.querySelector("#strategy-save")?.addEventListener("click", saveStrategy);
   document.querySelector("#strategy-file")?.addEventListener("change", (event) => uploadStrategyFile(event.currentTarget));
+  document.querySelector("#strategy-source-preview")?.addEventListener("click", openStrategySourceModal);
+  document.querySelector("#strategy-source-save")?.addEventListener("click", saveStrategySourceText);
+  document.querySelectorAll("[data-strategy-source-close]").forEach((button) => button.addEventListener("click", () => closeDomainModal("strategy-source-modal")));
+  document.querySelector("#strategy-source-modal")?.addEventListener("click", (event) => { if (event.target === event.currentTarget) closeDomainModal("strategy-source-modal"); });
   document.querySelectorAll("[data-strategy-field], [data-strategy-tone]").forEach((input) => {
     input.addEventListener("input", scheduleStrategySave);
     input.addEventListener("change", scheduleStrategySave);
@@ -6175,9 +6499,11 @@
     renderNewsletterDeliveries();
     renderChannelConnections();
     renderTeam();
+    renderOrganization();
     renderPlans();
     renderProjectPersonas();
     renderServiceRequests();
+    renderNotificationPreferences();
     hydrateContentEditors(true);
   }, 0)));
   document.querySelectorAll("[data-editor-command]").forEach((button) => button.addEventListener("click", () => handleEditorCommand(button.dataset.editorCommand)));

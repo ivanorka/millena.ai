@@ -72,6 +72,10 @@ func (r *Repository) CreateMember(ctx context.Context, projectID, actorID string
 	if err := lockProject(ctx, tx, projectID); err != nil {
 		return TeamMember{}, err
 	}
+	var organizationID string
+	if err := tx.QueryRow(ctx, `SELECT organization_id::text FROM projects WHERE id=$1::uuid`, projectID).Scan(&organizationID); err != nil {
+		return TeamMember{}, err
+	}
 	var seatLimit *int
 	var entitlementStatus string
 	var activeSeats int
@@ -116,6 +120,13 @@ func (r *Repository) CreateMember(ctx context.Context, projectID, actorID string
 	}
 	if userStatus != "active" {
 		return TeamMember{}, ErrUserUnavailable
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO organization_members (organization_id,user_id,role,status)
+		VALUES ($1::uuid,$2::uuid,'member','active')
+		ON CONFLICT (organization_id,user_id) DO UPDATE
+		SET status='active',updated_at=now()`, organizationID, userID); err != nil {
+		return TeamMember{}, err
 	}
 
 	var memberID string
@@ -355,35 +366,58 @@ func (r *Repository) UpdateEntitlement(ctx context.Context, projectID, actorID, 
 		return Entitlement{}, err
 	}
 
-	previousPlan := ""
-	if err := tx.QueryRow(ctx, `SELECT plan_code FROM project_entitlements WHERE project_id = $1::uuid`, projectID).Scan(&previousPlan); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	var organizationID, previousPlan string
+	if err := tx.QueryRow(ctx, `
+		SELECT project.organization_id::text,entitlement.plan_code
+		FROM projects AS project
+		JOIN organization_entitlements AS entitlement ON entitlement.organization_id=project.organization_id
+		WHERE project.id=$1::uuid`, projectID).Scan(&organizationID, &previousPlan); err != nil {
 		return Entitlement{}, err
 	}
 	result, err := tx.Exec(ctx, `
-		INSERT INTO project_entitlements (
-			project_id, plan_code, status, seat_limit, monthly_publication_limit,
-			storage_limit_bytes, features, renews_at
+		INSERT INTO organization_entitlements (
+			organization_id,plan_code,status,monthly_publication_limit,
+			storage_limit_bytes,features,renews_at
 		)
-		SELECT $1::uuid, plan.code, 'active', plan.seat_limit,
-		       plan.monthly_publication_limit, plan.storage_limit_bytes,
-		       plan.features, NULL
+		SELECT $1::uuid,plan.code,'active',plan.monthly_publication_limit,
+		       plan.storage_limit_bytes,plan.features,NULL
 		FROM plan_catalog AS plan
 		WHERE plan.code = $2 AND plan.is_active
-		  AND (plan.is_system OR plan.owner_project_id = $1::uuid)
-		ON CONFLICT (project_id) DO UPDATE SET
+		  AND (plan.is_system OR EXISTS (
+		      SELECT 1 FROM projects AS owner_project
+		      WHERE owner_project.id=plan.owner_project_id AND owner_project.organization_id=$1::uuid
+		  ))
+		ON CONFLICT (organization_id) DO UPDATE SET
 			plan_code = EXCLUDED.plan_code,
 			status = 'active',
-			seat_limit = EXCLUDED.seat_limit,
 			monthly_publication_limit = EXCLUDED.monthly_publication_limit,
 			storage_limit_bytes = EXCLUDED.storage_limit_bytes,
 			features = EXCLUDED.features,
 			renews_at = NULL,
-			updated_at = now()`, projectID, planCode)
+			updated_at = now()`, organizationID, planCode)
 	if err != nil {
 		return Entitlement{}, err
 	}
 	if result.RowsAffected() == 0 {
 		return Entitlement{}, ErrPlanNotAvailable
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO project_entitlements (
+			project_id,plan_code,status,seat_limit,monthly_publication_limit,
+			storage_limit_bytes,features,renews_at
+		)
+		SELECT project.id,entitlement.plan_code,entitlement.status,NULL,
+		       entitlement.monthly_publication_limit,entitlement.storage_limit_bytes,
+		       entitlement.features,entitlement.renews_at
+		FROM projects AS project
+		JOIN organization_entitlements AS entitlement ON entitlement.organization_id=project.organization_id
+		WHERE project.organization_id=$1::uuid
+		ON CONFLICT (project_id) DO UPDATE SET
+			plan_code=EXCLUDED.plan_code,status=EXCLUDED.status,seat_limit=NULL,
+			monthly_publication_limit=EXCLUDED.monthly_publication_limit,
+			storage_limit_bytes=EXCLUDED.storage_limit_bytes,features=EXCLUDED.features,
+			renews_at=EXCLUDED.renews_at,updated_at=now()`, organizationID); err != nil {
+		return Entitlement{}, err
 	}
 	entitlement, err := scanEntitlement(tx.QueryRow(ctx, entitlementSelectSQL, projectID))
 	if err != nil {

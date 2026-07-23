@@ -25,13 +25,16 @@ type Entitlement struct {
 }
 
 type ProjectAccess struct {
-	ProjectID     string         `json:"projectId"`
-	ProjectName   string         `json:"projectName"`
-	ProjectSlug   string         `json:"projectSlug"`
-	DefaultLocale string         `json:"defaultLocale"`
-	Role          string         `json:"role"`
-	Permissions   map[string]any `json:"permissions"`
-	Entitlement   Entitlement    `json:"entitlement"`
+	OrganizationID   string         `json:"organizationId"`
+	OrganizationName string         `json:"organizationName"`
+	OrganizationRole string         `json:"organizationRole"`
+	ProjectID        string         `json:"projectId"`
+	ProjectName      string         `json:"projectName"`
+	ProjectSlug      string         `json:"projectSlug"`
+	DefaultLocale    string         `json:"defaultLocale"`
+	Role             string         `json:"role"`
+	Permissions      map[string]any `json:"permissions"`
+	Entitlement      Entitlement    `json:"entitlement"`
 }
 
 type SessionUser struct {
@@ -53,6 +56,14 @@ type LoginInput struct {
 	Password string `json:"password"`
 }
 
+type PasswordResetRequestInput struct {
+	Email string `json:"email"`
+}
+type PasswordResetConfirmInput struct {
+	Token    string `json:"token"`
+	Password string `json:"password"`
+}
+
 type AccountInput struct {
 	DisplayName     string `json:"displayName"`
 	CurrentPassword string `json:"currentPassword"`
@@ -63,5 +74,7 @@ type RegistrationPlan struct {
 	Code                    string `json:"code"`
 	Name                    string `json:"name"`
 	Description             string `json:"description"`
+	PriceCents              int    `json:"priceCents"`
+	Currency                string `json:"currency"`
 	MonthlyPublicationLimit *int   `json:"monthlyPublicationLimit"`
 }

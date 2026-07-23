@@ -66,8 +66,14 @@ func (r *Repository) CanCreateProjects(ctx context.Context, userID, adminProject
 	var allowed bool
 	err := r.pool.QueryRow(ctx, `
 		SELECT EXISTS(
-			SELECT 1 FROM project_members
-			WHERE user_id = $1::uuid AND project_id = $2::uuid AND status = 'active' AND role = 'owner'
+			SELECT 1
+			FROM projects AS project
+			JOIN project_members AS access
+			  ON access.project_id=project.id AND access.user_id=$1::uuid AND access.status='active'
+			JOIN organization_members AS member
+			  ON member.organization_id=project.organization_id
+			 AND member.user_id=$1::uuid AND member.status='active'
+			WHERE project.id=$2::uuid AND member.role IN ('owner','admin')
 		)`, userID, adminProjectID).Scan(&allowed)
 	return allowed, err
 }
@@ -99,14 +105,20 @@ func (r *Repository) Create(ctx context.Context, input CreateProjectInput, owner
 		return Project{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	var organizationID string
+	if err := tx.QueryRow(ctx, `
+		SELECT organization_id::text FROM projects WHERE id=$1::uuid FOR SHARE`, input.AdminProjectID).Scan(&organizationID); err != nil {
+		return Project{}, err
+	}
 	var project Project
 	err = tx.QueryRow(ctx, `
-		INSERT INTO projects (name, slug, default_locale)
-		VALUES ($1, $2, $3)
+		INSERT INTO projects (organization_id,name,slug,default_locale)
+		VALUES ($4::uuid,$1,$2,$3)
 		RETURNING id::text, name, slug, default_locale, status, settings, created_at, updated_at`,
 		input.Name,
 		input.Slug,
 		input.DefaultLocale,
+		organizationID,
 	).Scan(
 		&project.ID,
 		&project.Name,
@@ -126,9 +138,15 @@ func (r *Repository) Create(ctx context.Context, input CreateProjectInput, owner
 		return Project{}, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO project_entitlements (project_id, plan_code, status, features)
-		VALUES ($1::uuid, 'unlimited', 'active',
-		'{"aiAgents":true,"analytics":true,"api":true,"auditLog":true,"automations":true,"prioritySupport":true,"socialChannels":"all","whiteLabel":true}'::jsonb)`, project.ID); err != nil {
+		INSERT INTO project_entitlements (
+			project_id,plan_code,status,seat_limit,monthly_publication_limit,
+			storage_limit_bytes,features,renews_at
+		)
+		SELECT $1::uuid,entitlement.plan_code,entitlement.status,NULL,
+		       entitlement.monthly_publication_limit,entitlement.storage_limit_bytes,
+		       entitlement.features,entitlement.renews_at
+		FROM organization_entitlements AS entitlement
+		WHERE entitlement.organization_id=$2::uuid`, project.ID, organizationID); err != nil {
 		return Project{}, err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO project_app_states (project_id) VALUES ($1::uuid)`, project.ID); err != nil {
@@ -188,10 +206,20 @@ func (r *Repository) BootstrapDemo(ctx context.Context) (BootstrapResult, error)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	_, err = tx.Exec(ctx, `
-		INSERT INTO projects (name, slug, default_locale)
-		VALUES ('MPR Grupa', 'millena-demo', 'hr')
-		ON CONFLICT (slug) DO NOTHING`)
+	var organizationID string
+	err = tx.QueryRow(ctx, `SELECT organization_id::text FROM projects WHERE slug='millena-demo'`).Scan(&organizationID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		if err := tx.QueryRow(ctx, `
+			INSERT INTO organizations (name,slug,status)
+			VALUES ('MPR Grupa','millena-demo','active')
+			ON CONFLICT (slug) DO UPDATE SET name=EXCLUDED.name,status='active',updated_at=now()
+			RETURNING id::text`).Scan(&organizationID); err != nil {
+			return BootstrapResult{}, err
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO projects (organization_id,name,slug,default_locale)
+			VALUES ($1::uuid,'MPR Grupa','millena-demo','hr')`, organizationID)
+	}
 	if err != nil {
 		return BootstrapResult{}, err
 	}

@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#ffffff" />
     <title>Prijava | Millena AI</title>
     <link rel="icon" href="assets/millena-mark.png" type="image/png" />
-    <link rel="stylesheet" href="site.css?v=20260722m" />
+    <link rel="stylesheet" href="site.css?v=20260722o" />
   </head>
   <body class="login-page">
     <main class="login-shell">
@@ -43,6 +43,7 @@
                 <div class="registration-plan-options">
                   <div id="registration-plan-options"><label class="registration-plan-card"><input type="radio" name="planCode" value="starter" checked /><span><strong>Starter</strong><small>Do 30 objava mjesečno</small></span></label><label class="registration-plan-card"><input type="radio" name="planCode" value="optimum" /><span><strong>Optimum</strong><small>Do 100 objava mjesečno</small></span></label><label class="registration-plan-card"><input type="radio" name="planCode" value="enterprise" /><span><strong>Enterprise</strong><small>Neograničen broj objava</small></span></label></div>
                 </div>
+                <div class="stripe-payment-note" id="stripe-payment-note"><i data-lucide="credit-card"></i><span data-hr="Sigurno plaćanje karticom putem Stripea. Kartične podatke ne unosite u Millenu." data-en="Secure card payment via Stripe. Your card details never enter Millena.">Sigurno plaćanje karticom putem Stripea. Kartične podatke ne unosite u Millenu.</span></div>
               </fieldset>
             </div>
             <label class="login-field">
@@ -56,8 +57,25 @@
                 <button type="button" class="password-toggle" aria-label="Prikaži lozinku" data-aria-hr="Prikaži lozinku" data-aria-en="Show password"><i data-lucide="eye"></i></button>
               </span>
             </label>
+            <button class="forgot-password-link" id="forgot-password" type="button"><i data-lucide="circle-help"></i><span data-hr="Zaboravili ste lozinku?" data-en="Forgot your password?">Zaboravili ste lozinku?</span></button>
             <button class="login-submit" type="submit"><span data-hr="Prijavi se" data-en="Sign in">Prijavi se</span><i data-lucide="arrow-right"></i></button>
             <p class="auth-message" id="auth-message" role="alert" hidden></p>
+          </form>
+
+          <form class="login-form password-reset-form" id="password-reset-request-form" hidden>
+            <p class="reset-intro" data-hr="Upišite e-mail računa. Ako postoji aktivan račun, poslat ćemo vam siguran jednokratni link za novu lozinku." data-en="Enter your account email. If an active account exists, we will send a secure one-time link to set a new password.">Upišite e-mail računa. Ako postoji aktivan račun, poslat ćemo vam siguran jednokratni link za novu lozinku.</p>
+            <label class="login-field"><span>Email</span><input type="email" name="resetEmail" autocomplete="email" required /></label>
+            <button class="login-submit" type="submit"><span data-hr="Pošalji link za novu lozinku" data-en="Send password reset link">Pošalji link za novu lozinku</span><i data-lucide="send"></i></button>
+            <button class="auth-back-link" type="button" data-return-to-login data-hr="← Povratak na prijavu" data-en="← Back to sign in">← Povratak na prijavu</button>
+            <p class="auth-message" id="password-reset-request-message" role="alert" hidden></p>
+          </form>
+
+          <form class="login-form password-reset-form" id="password-reset-confirm-form" hidden>
+            <p class="reset-intro" data-hr="Odaberite novu lozinku za svoj Millena AI račun. Nakon spremanja odjavit ćemo sve postojeće prijave." data-en="Choose a new password for your Millena AI account. Saving it will sign out every existing session.">Odaberite novu lozinku za svoj Millena AI račun. Nakon spremanja odjavit ćemo sve postojeće prijave.</p>
+            <label class="login-field"><span data-hr="Nova lozinka" data-en="New password">Nova lozinka</span><span class="password-field"><input type="password" name="newPassword" autocomplete="new-password" minlength="8" required /><button type="button" class="password-toggle" aria-label="Prikaži lozinku"><i data-lucide="eye"></i></button></span></label>
+            <label class="login-field"><span data-hr="Ponovite novu lozinku" data-en="Repeat new password">Ponovite novu lozinku</span><span class="password-field"><input type="password" name="confirmPassword" autocomplete="new-password" minlength="8" required /><button type="button" class="password-toggle" aria-label="Prikaži lozinku"><i data-lucide="eye"></i></button></span></label>
+            <button class="login-submit" type="submit"><span data-hr="Spremi novu lozinku" data-en="Save new password">Spremi novu lozinku</span><i data-lucide="check"></i></button>
+            <p class="auth-message" id="password-reset-confirm-message" role="alert" hidden></p>
           </form>
 
         </div>
@@ -85,6 +103,6 @@
     </main>
 
     <script src="assets/lucide.min.js"></script>
-    <script src="site.js?v=20260722j"></script>
+    <script src="site.js?v=20260722m"></script>
   </body>
 </html>

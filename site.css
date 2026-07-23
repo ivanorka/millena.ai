@@ -902,6 +902,24 @@ input:focus-visible {
   padding: 110px 28px;
 }
 
+.pricing-section { background: #f4f3ef; }
+.marketing-plan-grid { margin-top: 52px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.marketing-plan-card { position: relative; min-height: 356px; padding: 28px; display: flex; flex-direction: column; justify-content: space-between; gap: 24px; border: 1px solid var(--line); border-radius: 16px; background: #fff; box-shadow: 0 12px 28px rgba(23,23,25,.045); }
+.marketing-plan-card.featured { border-color: rgba(103,80,196,.42); box-shadow: 0 18px 42px rgba(103,80,196,.13); transform: translateY(-8px); }
+.marketing-plan-badge { position: absolute; top: 18px; right: 18px; padding: 5px 8px; border-radius: 999px; color: #5b43b5; background: #eeeaff; font-size: .57rem; font-weight: 850; letter-spacing: .04em; }
+.marketing-plan-icon { width: 44px; height: 44px; margin-bottom: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; color: #fff; background: var(--coral); }
+.marketing-plan-icon.violet { background: #6750c4; }
+.marketing-plan-icon.dark { background: var(--ink); }
+.marketing-plan-icon svg { width: 20px; }
+.marketing-plan-card h3 { margin: 0 0 8px; font-size: 1.42rem; }
+.marketing-plan-card p { max-width: 270px; margin: 0; color: var(--muted); font-size: .76rem; line-height: 1.55; }
+.marketing-plan-card > div:last-child { display: grid; gap: 16px; }
+.marketing-plan-card strong { font-size: 1.68rem; line-height: 1; }
+.marketing-plan-card strong small { color: var(--muted); font-size: .67rem; font-weight: 650; }
+.site-button.full { width: 100%; justify-content: center; }
+.pricing-security-note { margin: 28px 0 0; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-size: .72rem; }
+.pricing-security-note svg { width: 16px; color: #338a63; }
+
 .section-shell {
   width: min(1180px, 100%);
   margin: 0 auto;
@@ -1984,10 +2002,22 @@ input:focus-visible {
 .registration-plan-card span { min-height: 64px; padding: 13px 15px; display: grid; grid-template-columns: minmax(112px, .8fr) minmax(0, 1.8fr); align-items: center; gap: 14px; border: 1px solid var(--line-strong); border-radius: 8px; background: #fff; transition: border-color .15s ease, box-shadow .15s ease, background .15s ease; }
 .registration-plan-card strong { color: var(--ink); font-size: .78rem; }
 .registration-plan-card small { color: var(--muted); font-size: .67rem; line-height: 1.4; }
+.registration-plan-card em { justify-self: end; font-style: normal; font-weight: 800; color: var(--ink); white-space: nowrap; }
 .registration-plan-card input:checked + span { border-color: var(--coral-dark); box-shadow: 0 0 0 2px rgba(186, 79, 61, .14); }
 .registration-plan-card input:focus-visible + span { outline: 2px solid var(--blue); outline-offset: 2px; }
+.stripe-payment-note { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 0; padding: 10px 11px; border: 1px solid rgba(105, 82, 196, .18); border-radius: 10px; background: rgba(105, 82, 196, .055); color: var(--muted); font-size: .78rem; line-height: 1.4; }
+.stripe-payment-note svg { flex: 0 0 auto; width: 16px; color: #6750c4; }
+.stripe-payment-note.is-ready { border-color: rgba(34, 139, 91, .28); background: rgba(34, 139, 91, .07); }
+.stripe-payment-note.is-ready svg { color: #228b5b; }
 .auth-message { margin: 0 !important; padding: 10px 12px; border-radius: 6px; color: #a53625; background: #fff0ed; font-size: .65rem !important; line-height: 1.45; }
 .auth-message.success { color: #28704d; background: #edf9f3; }
+.login-form[hidden], .password-reset-form[hidden], .auth-mode-switch[hidden] { display: none !important; }
+.reset-intro { margin: 0 !important; color: var(--muted); font-size: .74rem !important; line-height: 1.55; }
+.forgot-password-link, .auth-back-link { justify-self: start; padding: 0; color: var(--coral-dark); background: transparent; font-size: .68rem; font-weight: 750; }
+.forgot-password-link { display: inline-flex; align-items: center; gap: 6px; }
+.forgot-password-link svg { width: 15px; height: 15px; }
+.forgot-password-link:hover, .auth-back-link:hover { color: var(--ink); text-decoration: underline; }
+.auth-back-link { margin-top: -3px; }
 
 .login-field {
   display: grid;
@@ -2134,6 +2164,8 @@ input:focus-visible {
   .channel-marquee { min-height: 72px; }
   .channel-set { gap: 24px; padding-right: 28px; }
   .setup-story { grid-template-columns: 1fr; }
+  .marketing-plan-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .marketing-plan-card { min-height: 330px; padding: 22px; }
   .setup-story article { min-height: 220px; }
   .story-icon { margin-bottom: 32px; }
   .workflow-head { grid-template-columns: 1fr; gap: 18px; }
@@ -2197,6 +2229,8 @@ input:focus-visible {
   .status-two { display: none; }
   .channel-ribbon strong { font-size: 0.65rem; }
   .workflow-track { grid-template-columns: 1fr; }
+  .marketing-plan-grid { grid-template-columns: 1fr; max-width: 480px; margin-right: auto; margin-left: auto; }
+  .marketing-plan-card.featured { transform: none; }
   .workflow-track > article { min-height: 190px; }
   .workflow-track > article > span { margin-bottom: 26px; }
   .bot-thread { min-height: 430px; padding: 20px 14px; }

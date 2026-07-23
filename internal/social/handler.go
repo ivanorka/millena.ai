@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/ivanorka/millena-ai/internal/assets"
+	"github.com/ivanorka/millena-ai/internal/auth"
 	"github.com/ivanorka/millena-ai/internal/limits"
 )
 
@@ -129,6 +130,7 @@ func (h *Handler) CreatePost(c *gin.Context) {
 	if writeDatabaseError(c, err, "Social post could not be created.") {
 		return
 	}
+	_ = h.repository.RecordPostNotification(c.Request.Context(), c.Param("projectID"), auth.UserID(c), post)
 	c.JSON(http.StatusCreated, gin.H{"data": post})
 }
 

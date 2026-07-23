@@ -23,9 +23,9 @@ type QueryRower interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }
 
-// PublicationCapacity is an entitlement row lock held by the caller's
-// transaction. All quota checks and ledger writes for the project serialize on
-// this lock until that transaction commits or rolls back.
+// PublicationCapacity is an organization entitlement row lock held by the
+// caller's transaction. All quota checks across every project in the tenant
+// serialize on this lock until that transaction commits or rolls back.
 type PublicationCapacity struct {
 	limit     *int
 	validated bool
@@ -38,9 +38,11 @@ func LockPublicationCapacity(ctx context.Context, query QueryRower, projectID st
 	var status string
 	err := query.QueryRow(ctx, `
 		SELECT entitlement.monthly_publication_limit, entitlement.status
-		FROM project_entitlements AS entitlement
-		WHERE entitlement.project_id = $1::uuid
-		FOR UPDATE`, projectID).Scan(&limit, &status)
+		FROM projects AS project
+		JOIN organization_entitlements AS entitlement
+		  ON entitlement.organization_id=project.organization_id
+		WHERE project.id=$1::uuid
+		FOR UPDATE OF entitlement`, projectID).Scan(&limit, &status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return PublicationCapacity{}, ErrEntitlementInactive
 	}
@@ -100,9 +102,12 @@ func (capacity PublicationCapacity) requireAvailable(ctx context.Context, query 
 	var used int
 	err := query.QueryRow(ctx, `
 		SELECT count(*)::int
-		FROM publication_consumptions
-		WHERE project_id = $1::uuid
-		  AND billing_month = date_trunc('month', now() AT TIME ZONE 'UTC')::date`, projectID).Scan(&used)
+		FROM publication_consumptions AS consumption
+		JOIN projects AS consumed_project ON consumed_project.id=consumption.project_id
+		JOIN projects AS active_project
+		  ON active_project.id=$1::uuid
+		 AND active_project.organization_id=consumed_project.organization_id
+		WHERE consumption.billing_month=date_trunc('month', now() AT TIME ZONE 'UTC')::date`, projectID).Scan(&used)
 	if err != nil {
 		return err
 	}

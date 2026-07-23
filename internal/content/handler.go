@@ -82,7 +82,7 @@ func (h *Handler) Create(c *gin.Context) {
 	if writeContentDatabaseError(c, err, "Content could not be created.") {
 		return
 	}
-	_ = h.repository.RecordAudit(c.Request.Context(), c.Param("projectID"), auth.UserID(c), "content.created", "content_item", &item.ID, map[string]any{"kind": item.Kind, "source": item.Source})
+	_ = h.repository.RecordAudit(c.Request.Context(), c.Param("projectID"), auth.UserID(c), "content.created", "content_item", &item.ID, map[string]any{"kind": item.Kind, "source": item.Source, "title": item.Title, "status": item.Status})
 	c.Header("Location", "/api/v1/projects/"+c.Param("projectID")+"/content/items/"+item.ID)
 	c.JSON(http.StatusCreated, gin.H{"data": item})
 }
@@ -100,7 +100,7 @@ func (h *Handler) Update(c *gin.Context) {
 	if writeContentDatabaseError(c, err, "Content could not be updated.") {
 		return
 	}
-	_ = h.repository.RecordAudit(c.Request.Context(), c.Param("projectID"), auth.UserID(c), "content.updated", "content_item", &item.ID, map[string]any{"kind": item.Kind, "revision": item.Revision})
+	_ = h.repository.RecordAudit(c.Request.Context(), c.Param("projectID"), auth.UserID(c), "content.updated", "content_item", &item.ID, map[string]any{"kind": item.Kind, "revision": item.Revision, "title": item.Title, "status": item.Status})
 	c.JSON(http.StatusOK, gin.H{"data": item})
 }
 
@@ -121,7 +121,7 @@ func (h *Handler) ApproveReview(c *gin.Context) {
 	if writeContentDatabaseError(c, err, "Content review could not be saved.") {
 		return
 	}
-	_ = h.repository.RecordAudit(c.Request.Context(), c.Param("projectID"), user.ID, "content.reviewed", "content_item", &item.ID, map[string]any{"reviewer": user.DisplayName, "status": item.Status})
+	_ = h.repository.RecordAudit(c.Request.Context(), c.Param("projectID"), user.ID, "content.reviewed", "content_item", &item.ID, map[string]any{"reviewer": user.DisplayName, "status": item.Status, "title": item.Title})
 	c.JSON(http.StatusOK, gin.H{"data": item})
 }
 
@@ -154,7 +154,7 @@ func (h *Handler) ReturnForRevision(c *gin.Context) {
 	if writeContentDatabaseError(c, err, "Content review could not be saved.") {
 		return
 	}
-	_ = h.repository.RecordAudit(c.Request.Context(), c.Param("projectID"), user.ID, "content.revision_requested", "content_item", &item.ID, map[string]any{"reviewer": user.DisplayName, "comment": input.Comment, "status": item.Status})
+	_ = h.repository.RecordAudit(c.Request.Context(), c.Param("projectID"), user.ID, "content.revision_requested", "content_item", &item.ID, map[string]any{"reviewer": user.DisplayName, "comment": input.Comment, "status": item.Status, "title": item.Title})
 	c.JSON(http.StatusOK, gin.H{"data": item})
 }
 
@@ -267,6 +267,10 @@ func (h *Handler) SaveStrategy(c *gin.Context) {
 		return
 	}
 	normalizeStrategyInput(&input)
+	if input.SourceText != nil && utf8.RuneCountInString(*input.SourceText) > maxStrategyTextRunes {
+		writeContentError(c, http.StatusUnprocessableEntity, "source_text_too_long", "Extracted strategy text is limited to 120,000 characters.")
+		return
+	}
 	if input.Mode == "" {
 		input.Mode = "questions"
 	}
@@ -326,11 +330,11 @@ func (h *Handler) UploadStrategy(c *gin.Context) {
 	if mimeType == "" || mimeType == "application/octet-stream" {
 		mimeType = mime.TypeByExtension(strings.ToLower(filepath.Ext(header.Filename)))
 	}
-	strategy, err := h.repository.SaveStrategyFile(c.Request.Context(), c.Param("projectID"), auth.UserID(c), filepath.Base(header.Filename), mimeType, extracted)
+	strategy, err := h.repository.SaveStrategyFile(c.Request.Context(), c.Param("projectID"), auth.UserID(c), filepath.Base(header.Filename), mimeType, extracted, data)
 	if writeContentDatabaseError(c, err, "Strategy file could not be stored.") {
 		return
 	}
-	_ = h.repository.RecordAudit(c.Request.Context(), c.Param("projectID"), auth.UserID(c), "strategy.file_uploaded", "project_strategy", nil, map[string]any{"filename": strategy.SourceFilename, "characters": utf8.RuneCountInString(extracted), "revision": strategy.Revision})
+	_ = h.repository.RecordAudit(c.Request.Context(), c.Param("projectID"), auth.UserID(c), "strategy.file_uploaded", "project_strategy", strategy.SourceAssetID, map[string]any{"filename": strategy.SourceFilename, "characters": utf8.RuneCountInString(extracted), "revision": strategy.Revision, "sourceAssetId": strategy.SourceAssetID})
 	c.JSON(http.StatusOK, gin.H{"data": strategy, "meta": gin.H{"extractedCharacters": utf8.RuneCountInString(extracted)}})
 }
 
@@ -416,6 +420,10 @@ func normalizeStrategyInput(input *StrategyInput) {
 	input.ForbiddenTopics = strings.TrimSpace(input.ForbiddenTopics)
 	input.SuccessMetrics = strings.TrimSpace(input.SuccessMetrics)
 	input.Tone = strings.TrimSpace(input.Tone)
+	if input.SourceText != nil {
+		text := strings.TrimSpace(*input.SourceText)
+		input.SourceText = &text
+	}
 }
 
 func cleanStringSlice(values []string, maxItems, maxLength int) []string {

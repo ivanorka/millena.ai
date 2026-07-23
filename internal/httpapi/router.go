@@ -15,23 +15,28 @@ import (
 	"github.com/ivanorka/millena-ai/internal/assistant"
 	"github.com/ivanorka/millena-ai/internal/audience"
 	"github.com/ivanorka/millena-ai/internal/auth"
+	"github.com/ivanorka/millena-ai/internal/billing"
 	"github.com/ivanorka/millena-ai/internal/calendar"
 	"github.com/ivanorka/millena-ai/internal/content"
+	"github.com/ivanorka/millena-ai/internal/notification"
+	"github.com/ivanorka/millena-ai/internal/organizations"
 	"github.com/ivanorka/millena-ai/internal/projects"
 	"github.com/ivanorka/millena-ai/internal/social"
 	"github.com/ivanorka/millena-ai/internal/workspace"
 )
 
 type RouterOptions struct {
-	Database       *pgxpool.Pool
-	StaticDir      string
-	AllowedOrigins []string
-	SessionTTL     time.Duration
-	CookieSecure   bool
-	AIProvider     string
-	OllamaBaseURL  string
-	OllamaModel    string
-	AITimeout      time.Duration
+	Database        *pgxpool.Pool
+	StaticDir       string
+	AllowedOrigins  []string
+	SessionTTL      time.Duration
+	CookieSecure    bool
+	AIProvider      string
+	OllamaBaseURL   string
+	OllamaModel     string
+	AITimeout       time.Duration
+	StripeSecretKey string
+	AppBaseURL      string
 }
 
 func NewRouter(options RouterOptions) *gin.Engine {
@@ -44,15 +49,23 @@ func NewRouter(options RouterOptions) *gin.Engine {
 	api.GET("/ready", readiness(options.Database))
 
 	authHandler := auth.NewHandler(auth.NewRepository(options.Database), options.SessionTTL, options.CookieSecure)
+	billingHandler := billing.NewHandler(options.Database, options.StripeSecretKey, options.AppBaseURL)
 	api.GET("/registration-plans", authHandler.RegistrationPlans)
+	api.GET("/billing/status", billingHandler.Status)
+	api.POST("/billing/checkout-session", billingHandler.CreateCheckoutSession)
 	api.POST("/auth/register", authHandler.Register)
 	api.POST("/auth/login", authHandler.Login)
+	api.POST("/auth/password-reset", authHandler.RequestPasswordReset)
+	api.POST("/auth/password-reset/confirm", authHandler.ConfirmPasswordReset)
 
 	secured := api.Group("")
 	secured.Use(authHandler.RequireSession())
 	secured.GET("/auth/me", authHandler.Me)
 	secured.PUT("/auth/account", authHandler.UpdateAccount)
 	secured.POST("/auth/logout", authHandler.Logout)
+	notificationHandler := notification.NewHandler(notification.NewRepository(options.Database))
+	secured.GET("/notification-preferences", notificationHandler.GetPreferences)
+	secured.PUT("/notification-preferences", notificationHandler.SavePreferences)
 	systemAdmin := admin.NewSystemHandler(options.Database)
 	system := secured.Group("/system", auth.RequireSuperAdmin())
 	system.GET("/users", systemAdmin.Users)
@@ -167,6 +180,11 @@ func NewRouter(options RouterOptions) *gin.Engine {
 	secured.POST("/projects/:projectID/assistant/threads/:threadID/messages", publishProjectRoles, requireAIAgents, assistantHandler.Send)
 
 	adminHandler := admin.NewHandler(admin.NewRepository(options.Database))
+	organizationHandler := organizations.NewHandler(organizations.NewRepository(options.Database))
+	secured.GET("/projects/:projectID/organization", allProjectRoles, organizationHandler.Detail)
+	secured.POST("/projects/:projectID/organization/members", allProjectRoles, organizationHandler.CreateMember)
+	secured.PUT("/projects/:projectID/organization/members/:memberID", allProjectRoles, organizationHandler.UpdateMember)
+	secured.DELETE("/projects/:projectID/organization/members/:memberID", allProjectRoles, organizationHandler.DeleteMember)
 	secured.GET("/projects/:projectID/team", manageProjectRoles, adminHandler.ListTeam)
 	secured.POST("/projects/:projectID/team", ownerProjectRole, adminHandler.CreateMember)
 	secured.PUT("/projects/:projectID/team/:memberID", ownerProjectRole, adminHandler.UpdateMember)

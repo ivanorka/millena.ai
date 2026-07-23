@@ -16,6 +16,7 @@ import (
 	"github.com/ivanorka/millena-ai/internal/config"
 	"github.com/ivanorka/millena-ai/internal/database"
 	"github.com/ivanorka/millena-ai/internal/httpapi"
+	"github.com/ivanorka/millena-ai/internal/notification"
 	"github.com/ivanorka/millena-ai/internal/operations"
 	"github.com/ivanorka/millena-ai/internal/social"
 )
@@ -53,20 +54,26 @@ func main() {
 	}
 
 	router := httpapi.NewRouter(httpapi.RouterOptions{
-		Database:       pool,
-		StaticDir:      cfg.StaticDir,
-		AllowedOrigins: cfg.CORSAllowedOrigins,
-		SessionTTL:     cfg.SessionTTL,
-		CookieSecure:   cfg.Environment == "production",
-		AIProvider:     cfg.AIProvider,
-		OllamaBaseURL:  cfg.OllamaBaseURL,
-		OllamaModel:    cfg.OllamaModel,
-		AITimeout:      cfg.AIRequestTimeout,
+		Database:        pool,
+		StaticDir:       cfg.StaticDir,
+		AllowedOrigins:  cfg.CORSAllowedOrigins,
+		SessionTTL:      cfg.SessionTTL,
+		CookieSecure:    cfg.Environment == "production",
+		AIProvider:      cfg.AIProvider,
+		OllamaBaseURL:   cfg.OllamaBaseURL,
+		OllamaModel:     cfg.OllamaModel,
+		AITimeout:       cfg.AIRequestTimeout,
+		StripeSecretKey: cfg.StripeSecretKey,
+		AppBaseURL:      cfg.AppBaseURL,
 	})
 	workerContext, stopWorker := context.WithCancel(context.Background())
 	defer stopWorker()
 	go social.NewWorker(social.NewRepository(pool), 2*time.Second).Run(workerContext)
 	go operations.NewWorker(operations.NewRepository(pool), 2*time.Second).Run(workerContext)
+	go notification.NewWorker(notification.NewRepository(pool), notification.NewSMTPMailer(notification.SMTPConfig{
+		Host: cfg.SMTPHost, Port: cfg.SMTPPort, Username: cfg.SMTPUsername, Password: cfg.SMTPPassword,
+		From: cfg.EmailFrom, FromName: cfg.EmailFromName, AppURL: cfg.AppBaseURL,
+	}), 15*time.Second).Run(workerContext)
 
 	writeTimeout := 30 * time.Second
 	if aiWriteTimeout := cfg.AIRequestTimeout + 5*time.Second; aiWriteTimeout > writeTimeout {

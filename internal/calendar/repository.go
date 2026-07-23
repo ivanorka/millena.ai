@@ -356,9 +356,9 @@ func recordCalendarAudit(ctx context.Context, tx pgx.Tx, projectID, userID, acti
 	_, err := tx.Exec(ctx, `
 		INSERT INTO audit_events (project_id, actor_id, action, entity_type, entity_id, metadata)
 		VALUES ($1::uuid, NULLIF($2, '')::uuid, $3, 'calendar_item', $4::uuid,
-		        jsonb_build_object('channel', $5::text, 'status', $6::text, 'scheduledFor', $7::timestamptz,
-		                           'contentItemId', $8::text, 'contentVariantId', $9::text))`,
-		projectID, userID, action, itemID, item.Channel, item.Status, item.ScheduledFor,
+		        jsonb_build_object('title', $5::text, 'channel', $6::text, 'status', $7::text, 'scheduledFor', $8::timestamptz,
+		                           'contentItemId', $9::text, 'contentVariantId', $10::text))`,
+		projectID, userID, action, itemID, item.Title, item.Channel, item.Status, item.ScheduledFor,
 		item.ContentItemID, item.ContentVariantID)
 	return err
 }
